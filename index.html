@@ -1,0 +1,1769 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="data:,"></head><body>
+<script>
+/* ===== CONFIGURAÇÃO DO SUPABASE: troque os dois valores abaixo ===== */
+window.ESTOQUE_SUPABASE = { url: 'https://rhpsucabzrskoptcnbph.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocHN1Y2FienJza29wdGNuYnBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNjk1NTMsImV4cCI6MjEwNzc0NTU1M30.QAKO3PsRONwddRF_H0btieSZeRxZzXX0vfuj0g7b6DM' };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<title>Espelho de Estoque Blessy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: ferramenta interna — trilho lateral de navegação + área de trabalho; no celular o trilho vira faixa no topo. */
+:root{
+  --bg:#F3F6F4; --surface:#FFFFFF; --surface-2:#EAF0EC; --line:#D7E0DA; --ink:#16211B; --muted:#5B6A62;
+  --accent:#0E6B66; --accent-ink:#FFFFFF; --accent-soft:#D9EEEA;
+  --ok:#23824F; --ok-soft:#DDF1E5; --warn:#A86A06; --warn-soft:#FBEFD6; --bad:#BE3A33; --bad-soft:#F9E0DD; --zero:#2F3532; --zero-soft:#E3E6E4;
+  --info:#3D5BA9; --info-soft:#E1E8F7;
+  --shadow:0 1px 2px rgba(22,33,27,.06),0 4px 16px rgba(22,33,27,.05);
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1412; --surface:#151D1A; --surface-2:#1B2521; --line:#2A3631; --ink:#E4EDE8; --muted:#92A199;
+  --accent:#4CC0B4; --accent-ink:#06211E; --accent-soft:#17332F;
+  --ok:#5CC48B; --ok-soft:#173326; --warn:#E3AB4A; --warn-soft:#352914; --bad:#F07C72; --bad-soft:#3A1D1A; --zero:#B5BDB8; --zero-soft:#262D2A;
+  --info:#8AA5EE; --info-soft:#1C2540; --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1412; --surface:#151D1A; --surface-2:#1B2521; --line:#2A3631; --ink:#E4EDE8; --muted:#92A199;
+  --accent:#4CC0B4; --accent-ink:#06211E; --accent-soft:#17332F;
+  --ok:#5CC48B; --ok-soft:#173326; --warn:#E3AB4A; --warn-soft:#352914; --bad:#F07C72; --bad-soft:#3A1D1A; --zero:#B5BDB8; --zero-soft:#262D2A;
+  --info:#8AA5EE; --info-soft:#1C2540; --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h1{font-size:1.65rem} h2{font-size:1.2rem} h3{font-size:1rem}
+p{margin:0}
+.mono{font-family:var(--f-mono);font-size:.86em}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100%}
+.rail{background:var(--surface);border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:env(safe-area-inset-top,0px);height:100vh;overflow:auto}
+.brand{display:flex;flex-direction:column;gap:2px;padding:0 8px}
+.brand b{font-family:var(--f-display);font-size:1.25rem;letter-spacing:-.02em}
+.brand span{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-weight:500}
+.nav a:hover{background:var(--surface-2)}
+.nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.nav .badge{background:var(--bad);color:#fff;border-radius:99px;font-size:.72rem;padding:1px 7px;font-weight:700}
+.rail-foot{margin-top:auto;font-size:.8rem;color:var(--muted);padding:0 8px;display:flex;flex-direction:column;gap:6px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
+.dot.off{background:var(--bad)}
+
+main{padding-block:24px 64px;padding-inline:28px;min-width:0;max-width:1320px}
+.page-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+.page-head p{color:var(--muted);margin-top:4px;max-width:68ch}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+
+.basestrip{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;margin-bottom:18px}
+.basestrip .tag{font-family:var(--f-mono);font-size:.78rem;background:var(--accent);color:var(--accent-ink);padding:3px 8px;border-radius:6px;font-weight:500}
+.basestrip .sep{color:var(--line)}.basestrip .sep:last-of-type{display:none}
+
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+a.btn{text-decoration:none;color:var(--ink)}a.btn.primary{color:var(--accent-ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--accent);padding:6px 8px}
+.btn.ghost:hover{background:var(--accent-soft)}
+.btn.sm{padding:5px 10px;font-size:.86rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;min-width:0}
+.metric .lab{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.metric .val{font-family:var(--f-display);font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;margin-top:4px;line-height:1.15}
+.metric .sub{font-size:.82rem;color:var(--muted);margin-top:2px}
+.metric.hero{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.metric.hero .lab,.metric.hero .sub{color:inherit;opacity:.82}
+.metric.click{cursor:pointer}
+.metric.click:hover{border-color:var(--accent)}
+.val.neg{color:var(--bad)} .val.pos{color:var(--ok)}
+.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:26px 0 10px;flex-wrap:wrap}
+.section-title h2{font-size:1.05rem}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.panel-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.input,select.input,textarea.input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;min-width:0}
+.input:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.search{min-width:220px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 11px;font-size:.84rem;cursor:pointer;font-weight:500}
+.chip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface)}
+th.num{text-align:right}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--surface-2)}
+tfoot td{font-weight:700;border-top:2px solid var(--line);border-bottom:none}
+td.strong{font-weight:700}
+.prod{font-weight:600}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:3px 10px;font-size:.8rem;font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.saudavel,.pill.ok,.pill.nova{background:var(--ok-soft);color:var(--ok)}
+.pill.baixo,.pill.warn,.pill.anterior{background:var(--warn-soft);color:var(--warn)}
+.pill.critico,.pill.bad,.pill.erro{background:var(--bad-soft);color:var(--bad)}
+.pill.zerado{background:var(--zero-soft);color:var(--zero)}
+.pill.sem_minimo,.pill.neutral,.pill.duplicada{background:var(--surface-2);color:var(--muted)}
+.pill.info{background:var(--info-soft);color:var(--info)}
+.pill.accent{background:var(--accent-soft);color:var(--accent)}
+.delta-neg{color:var(--bad)} .delta-pos{color:var(--ok)}
+
+.notice{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r);padding:12px 14px;border:1px solid var(--line);background:var(--surface-2);margin-bottom:14px}
+.notice.warn{background:var(--warn-soft);border-color:transparent;color:var(--ink)}
+.notice.bad{background:var(--bad-soft);border-color:transparent}
+.notice.ok{background:var(--ok-soft);border-color:transparent}
+.notice b{font-weight:700}
+.notice .grow{flex:1;min-width:0}
+
+/* Importação */
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.step{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;background:var(--surface);border:1px solid var(--line);font-size:.86rem;color:var(--muted);font-weight:600}
+.step i{font-style:normal;font-family:var(--f-mono);font-size:.78rem}
+.step.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.step.done{color:var(--ok)}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:44px 20px;text-align:center;background:var(--surface);cursor:pointer;display:flex;flex-direction:column;gap:8px;align-items:center}
+.drop.over,.drop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.drop h3{font-size:1.15rem}
+.mapgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;padding:14px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-weight:600;font-size:.88rem}
+.field .hint{font-size:.78rem;color:var(--muted)}
+.req{color:var(--bad)}
+.summary-big{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.confirmbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:var(--surface);border:2px solid var(--accent);border-radius:var(--r);padding:16px 18px;margin-top:16px}
+.confirmbar h3{font-size:1.1rem}
+.kv{display:flex;flex-wrap:wrap;gap:4px 6px}
+.kv span{background:var(--surface-2);border-radius:6px;padding:2px 7px;font-size:.8rem}
+.kv span b{font-weight:600;color:var(--muted);margin-right:4px}
+
+/* Modal */
+.scrim{position:fixed;inset:0;background:rgba(10,16,13,.45);display:flex;align-items:flex-start;justify-content:center;padding:max(24px,env(safe-area-inset-top,0px)) 16px 24px;z-index:50;overflow:auto}
+.modal{background:var(--surface);border-radius:14px;width:min(560px,100%);box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;max-height:calc(100vh - 48px)}
+.modal.wide{width:min(920px,100%)}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px 12px;border-bottom:1px solid var(--line)}
+.modal-body{padding:16px 20px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--line);flex-wrap:wrap}
+.x{background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px}
+.form2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;background:var(--surface);padding:8px 14px;cursor:pointer;font-weight:600}
+.seg button.on{background:var(--ink);color:var(--surface)}
+
+/* Auditoria */
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.calc .card{padding:10px 12px}
+.timeline{display:flex;flex-direction:column}
+.tl{display:grid;grid-template-columns:128px minmax(0,1fr) 80px 80px;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);align-items:center}
+.tl.basehead{background:var(--accent-soft);border-radius:8px;border-bottom:none;padding:10px 10px;margin:6px 0}
+.tl.final{background:var(--ink);color:var(--surface);border-radius:8px;border-bottom:none;padding:12px 10px;margin-top:8px;font-weight:700}
+.tl.countinfo{background:var(--info-soft);border-radius:8px;border-bottom:none;margin:4px 0;padding:9px 10px}
+.tl.reversed .what{text-decoration:line-through;opacity:.6}
+.tl .when{font-family:var(--f-mono);font-size:.8rem;color:var(--muted)}
+.tl.final .when,.tl.basehead .when{color:inherit}
+.tl .run{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.tl.final .run{color:inherit}
+details.period{border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;margin-bottom:10px}
+details.period summary{cursor:pointer;font-weight:600;padding:4px 0}
+
+.toast-wrap{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));right:16px;left:16px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:80;pointer-events:none}
+.toast{background:var(--ink);color:var(--surface);padding:10px 14px;border-radius:10px;box-shadow:var(--shadow);max-width:420px;pointer-events:auto;font-weight:500}
+.toast.bad{background:var(--bad);color:#fff}
+
+.errcard{display:flex;flex-direction:column;gap:10px}
+.errcard .top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.errlist{display:flex;flex-direction:column;gap:10px}
+.solution{border-left:3px solid var(--accent);padding-left:10px;color:var(--muted)}
+.test-step{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.test-step:last-child{border-bottom:none}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.stack{display:flex;flex-direction:column;gap:14px}
+code{font-family:var(--f-mono);font-size:.85em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .rail{position:sticky;top:env(safe-area-inset-top,0px);height:auto;z-index:30;flex-direction:row;align-items:center;padding:10px 16px;gap:12px;border-right:none;border-bottom:1px solid var(--line);overflow:hidden}
+  .brand{padding:0;flex:none}.brand span{display:none}
+  .nav{flex-direction:row;overflow-x:auto;scrollbar-width:none;min-width:0}
+  .nav a{padding:7px 10px;white-space:nowrap}
+  .rail-foot{display:none}
+  main{padding-inline:16px;padding-block:18px 60px}
+  .two,.form2{grid-template-columns:1fr}
+  .tl{grid-template-columns:96px minmax(0,1fr) 64px;}
+  .tl .run{display:none}
+  .search{min-width:0;flex:1}
+}
+@media (prefers-reduced-motion:no-preference){.toast{animation:pop .18s ease-out}@keyframes pop{from{transform:translateY(6px);opacity:.4}to{transform:none;opacity:1}}}
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand"><b>Blessy</b><span>Espelho de estoque</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="rail-foot" id="railfoot"></div>
+  </aside>
+  <main id="view"><div class="empty">Carregando o estoque…</div></main>
+</div>
+<div class="toast-wrap" id="toasts"></div>
+<input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.txt" hidden>
+<input type="file" id="backupInput" accept=".json" hidden>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ===== Núcleo do ledger: funções puras, sem DOM (testáveis isoladamente) ===== */
+const Core = (() => {
+  'use strict';
+
+  const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/\s+/g, ' ').trim();
+  const pad = n => String(n).padStart(2, '0');
+  const naive = (y, mo, d, h, mi, s) => `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${pad(mi)}:${pad(s)}`;
+  const isBlank = v => v == null || String(v).trim() === '';
+
+  function nowNaive() {
+    const d = new Date();
+    return naive(d.getFullYear(), d.getMonth() + 1, d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds());
+  }
+
+  function validYMD(y, mo, d) {
+    if (!(y >= 2000 && y <= 2100) || mo < 1 || mo > 12 || d < 1) return false;
+    return d <= new Date(y, mo, 0).getDate();
+  }
+
+  /* Hora isolada: "14:01", "14h", "14:01:30", fração do Excel (0.5 = 12:00) ou Date. */
+  function parseTime(v) {
+    if (isBlank(v)) return null;
+    if (v instanceof Date) return isNaN(v) ? undefined : { h: v.getHours(), mi: v.getMinutes(), s: v.getSeconds() };
+    if (typeof v === 'number') {
+      let secs = Math.round((v - Math.floor(v)) * 86400);
+      if (secs >= 86400) secs = 86399;
+      return { h: Math.floor(secs / 3600), mi: Math.floor((secs % 3600) / 60), s: secs % 60 };
+    }
+    const m = String(v).trim().match(/^(\d{1,2})\s*[:hH]\s*(\d{2})?(?::(\d{2}))?/);
+    if (!m) return undefined;
+    const h = +m[1], mi = +(m[2] || 0), s = +(m[3] || 0);
+    if (h > 23 || mi > 59 || s > 59) return undefined;
+    return { h, mi, s };
+  }
+
+  /* Data/hora em formato brasileiro, ISO, Date ou número serial do Excel.
+     Retorna valor "ingênuo" (sem fuso) YYYY-MM-DDTHH:mm:ss para comparação direta. */
+  function parseDateTime(v, timeV) {
+    if (isBlank(v)) return { ok: false, error: 'Data vazia' };
+    let y, mo, d, h = 0, mi = 0, s = 0, hasTime = false;
+    if (v instanceof Date) {
+      if (isNaN(v)) return { ok: false, error: 'Data inválida' };
+      y = v.getFullYear(); mo = v.getMonth() + 1; d = v.getDate();
+      h = v.getHours(); mi = v.getMinutes(); s = v.getSeconds();
+      hasTime = !!(h || mi || s);
+    } else if (typeof v === 'number') {
+      if (!(v > 20000 && v < 80000)) return { ok: false, error: `Número "${v}" não parece uma data` };
+      const days = Math.floor(v);
+      const dt = new Date(Date.UTC(1899, 11, 30) + days * 86400000);
+      y = dt.getUTCFullYear(); mo = dt.getUTCMonth() + 1; d = dt.getUTCDate();
+      if (v - days > 1e-7) { const t = parseTime(v); h = t.h; mi = t.mi; s = t.s; hasTime = true; }
+    } else {
+      const str = String(v).trim();
+      let m = str.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4}|\d{2})(?:[\sT,]+(?:[aà]s\s*)?(\d{1,2})\s*[:hH]\s*(\d{2})?(?::(\d{2}))?)?/i);
+      if (m) {
+        d = +m[1]; mo = +m[2]; y = +m[3]; if (y < 100) y += 2000;
+        if (m[4] != null) { h = +m[4]; mi = +(m[5] || 0); s = +(m[6] || 0); hasTime = true; }
+      } else if ((m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/))) {
+        y = +m[1]; mo = +m[2]; d = +m[3];
+        if (m[4] != null) { h = +m[4]; mi = +m[5]; s = +(m[6] || 0); hasTime = true; }
+      } else {
+        return { ok: false, error: `Formato de data não reconhecido: "${str}"` };
+      }
+    }
+    if (!validYMD(y, mo, d)) return { ok: false, error: 'Data inexistente no calendário' };
+    if (h > 23 || mi > 59 || s > 59) return { ok: false, error: 'Horário inválido' };
+    if (!isBlank(timeV)) {
+      const t = parseTime(timeV);
+      if (t === undefined) return { ok: false, error: `Hora inválida: "${timeV}"` };
+      h = t.h; mi = t.mi; s = t.s; hasTime = true;
+    }
+    return { ok: true, value: naive(y, mo, d, h, mi, s), hasTime };
+  }
+
+  /* Quantidade: aceita "1.000", "1,0", "15 un". Negativa vira valor absoluto + flag. */
+  function parseQty(v) {
+    if (isBlank(v)) return { ok: false, error: 'Quantidade vazia' };
+    let n;
+    if (typeof v === 'number') n = v;
+    else {
+      let s = String(v).trim().replace(/\s/g, '').replace(/(unidades?|unid|und|un|pcs?|pç)\.?$/i, '');
+      if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+      else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+      if (!/^-?\d+(\.\d+)?$/.test(s)) return { ok: false, error: `Quantidade não numérica: "${v}"` };
+      n = parseFloat(s);
+    }
+    if (!isFinite(n)) return { ok: false, error: 'Quantidade inválida' };
+    if (n === 0) return { ok: false, error: 'Quantidade igual a zero' };
+    if (Math.abs(n - Math.round(n)) > 1e-9) return { ok: false, error: `Quantidade fracionada (${v})` };
+    return { ok: true, value: Math.abs(Math.round(n)), negative: n < 0 };
+  }
+
+  /* Tipo: retorna 'ENTRADA', 'SAIDA', null (vazio) ou undefined (desconhecido). */
+  function parseTipo(raw) {
+    const t = norm(raw);
+    if (!t) return null;
+    if (['e', 'ent', '+', 'in'].includes(t) || /entrada|compra|devolu|receb|retorno|reposi/.test(t)) return 'ENTRADA';
+    if (['s', 'sai', '-', 'out'].includes(t) || /saida|venda|pedido|baixa|expedi|envio|despach/.test(t)) return 'SAIDA';
+    return undefined;
+  }
+
+  function productIndex(products) {
+    const bySku = new Map(), byName = new Map();
+    for (const p of products) {
+      if (p.arquivado) continue;
+      if (!isBlank(p.sku)) bySku.set(norm(p.sku), p.id);
+      byName.set(norm(p.nome), p.id);
+      for (const a of p.vinculos || []) { const k = norm(a); if (k) { bySku.set(k, p.id); byName.set(k, p.id); } }
+    }
+    return { bySku, byName };
+  }
+
+  const identKey = r => !isBlank(r.sku) ? 'sku:' + norm(r.sku) : (!isBlank(r.produto) ? 'nome:' + norm(r.produto) : '');
+
+  function resolveProduct(r, idx, overrides) {
+    if (r._productId) return r._productId;
+    const ik = identKey(r);
+    if (ik && overrides && overrides[ik]) return overrides[ik];
+    const sku = norm(r.sku), nome = norm(r.produto);
+    if (sku && idx.bySku.has(sku)) return idx.bySku.get(sku);
+    if (nome && idx.byName.has(nome)) return idx.byName.get(nome);
+    if (sku && idx.byName.has(sku)) return idx.byName.get(sku);
+    return null;
+  }
+
+  /* Classifica registros já mapeados:
+     anterior  -> data/hora <= contagem-base (já está na contagem)
+     duplicada -> chave já existe no ledger (ou repetida no próprio arquivo)
+     erro      -> não processável sem intervenção
+     nova      -> será lançada no ledger */
+  function classifyRecords(records, ctx) {
+    const idx = productIndex(ctx.products);
+    const keyInfo = new Map();
+    const loose = new Map();
+    for (const e of ctx.ledger) {
+      if (e.key) keyInfo.set(e.key, e);
+      if (e.looseKey) loose.set(e.looseKey, e);
+    }
+    const seen = new Set();
+    const base = ctx.baseDataHora, baseDay = base.slice(0, 10), baseHM = base.slice(11, 16);
+
+    return records.map((r, i) => {
+      const it = { linha: r._linha ?? i + 1, original: r._original || null, raw: r, status: null, codigo: null, problema: null, solucao: null, parsed: {} };
+      const fail = (codigo, problema, solucao) => Object.assign(it, { status: 'erro', codigo, problema, solucao });
+      const P = it.parsed;
+
+      const dt = parseDateTime(r.data, r.hora);
+      if (dt.ok) P.dataHora = dt.value;
+      P.pedido = isBlank(r.pedido) ? '' : String(r.pedido).trim();
+      P.idUnico = isBlank(r.idUnico) ? '' : String(r.idUnico).trim();
+      const q = parseQty(r.quantidade);
+      if (q.ok) P.qtd = q.value;
+      let tipo = parseTipo(r.tipo);
+      const tipoInformado = tipo;
+      if (tipo === null) tipo = q.ok && q.negative ? 'SAIDA' : (ctx.defaultTipo || 'SAIDA');
+      P.tipo = tipo;
+      P.productId = resolveProduct(r, idx, ctx.overrides);
+      P.ident = identKey(r);
+
+      if (!dt.ok) return fail('data_invalida', dt.error, 'Confira a coluna mapeada como Data. Formatos aceitos: 08/10/2026 14:01 ou 2026-10-08 14:01.');
+      if (!dt.hasTime && dt.value.slice(0, 10) === baseDay)
+        return fail('sem_horario', `Data sem horário no mesmo dia da contagem-base. Não dá para saber se aconteceu antes ou depois das ${baseHM}.`, 'Mapeie a coluna de hora ou corrija a linha informando o horário do pedido no Bling.');
+      if (dt.value <= base) { it.status = 'anterior'; return it; }
+
+      if (!P.pedido && !P.idUnico) return fail('sem_id', 'Linha sem número de pedido ou ID da movimentação.', 'Sem um identificador não dá para garantir que essa linha não será descontada duas vezes. Informe o número do pedido.');
+      if (!q.ok) return fail('qtd_invalida', q.error, 'A quantidade precisa ser um número inteiro maior que zero.');
+      if (tipo === undefined) return fail('tipo_desconhecido', `Tipo de movimentação desconhecido: "${r.tipo}"`, 'Corrija para Entrada ou Saída.');
+      if (tipoInformado === 'ENTRADA' && q.negative) return fail('qtd_invalida', 'Quantidade negativa em uma linha marcada como entrada.', 'Confirme se é entrada ou saída e corrija o sinal.');
+      if (!P.productId) {
+        if (!P.ident) return fail('sem_produto', 'Linha sem SKU e sem nome de produto.', 'Informe a qual produto essa linha se refere.');
+        return fail('produto_nao_encontrado', !isBlank(r.sku) ? `SKU "${r.sku}" não está cadastrado.` : `Produto "${r.produto}" não foi reconhecido.`,
+          'Vincule este SKU/nome a um produto cadastrado. O vínculo fica salvo para as próximas importações.');
+      }
+
+      const key = P.idUnico ? 'U|' + norm(P.idUnico) : ['P', norm(P.pedido), P.productId, tipo, P.qtd].join('|');
+      const looseKey = P.pedido ? ['P', norm(P.pedido), P.productId, tipo].join('|') : '';
+      P.key = key; P.looseKey = looseKey;
+      if (keyInfo.has(key)) { it.status = 'duplicada'; it.problema = `Já processada (${keyInfo.get(key).id}${keyInfo.get(key).importId ? ', importação ' + keyInfo.get(key).importId : ''})`; return it; }
+      if (seen.has(key)) { it.status = 'duplicada'; it.problema = 'Repetida dentro do próprio arquivo'; it.repetidaNoArquivo = true; return it; }
+      if (!P.idUnico && looseKey && loose.has(looseKey) && !r._force) {
+        const prev = loose.get(looseKey);
+        return fail('qtd_divergente', `O pedido ${P.pedido} já foi processado para este produto com ${Math.abs(prev.delta)} un. (${prev.id}). Agora aparece com ${P.qtd} un.`,
+          'Se o pedido mudou no Bling, lance um ajuste manual com a diferença. Se for outro item do mesmo pedido, use "Processar mesmo assim".');
+      }
+      seen.add(key);
+      it.status = 'nova';
+      return it;
+    });
+  }
+
+  /* Transforma itens "nova" em lançamentos do ledger. */
+  function buildEntries(items, opts) {
+    let seq = opts.seqStart;
+    return items.filter(i => i.status === 'nova').map(i => {
+      seq += 1;
+      const p = i.parsed;
+      return {
+        id: 'M' + String(seq).padStart(6, '0'), seq,
+        tipo: p.tipo, cat: p.tipo === 'ENTRADA' ? 'entradas' : 'saidas',
+        delta: p.tipo === 'ENTRADA' ? p.qtd : -p.qtd,
+        productId: p.productId, dataHora: p.dataHora,
+        ref: p.pedido, idUnico: p.idUnico, key: p.key, looseKey: p.looseKey,
+        origem: opts.origem || 'bling', importId: opts.importId || null, erroId: opts.erroId || null,
+        linha: i.linha, criadoEm: opts.criadoEm
+      };
+    });
+  }
+
+  /* Contagem-base vigente para um instante: a última base com dataHora < instante. */
+  function baseFor(counts, at) {
+    return counts.filter(c => c.ehBase && c.dataHora < at).sort((a, b) => a.dataHora < b.dataHora ? 1 : -1)[0] || null;
+  }
+
+  function estimateAt(productId, base, ledger, until) {
+    let v = +(base.itens[productId] || 0);
+    for (const e of ledger) if (e.productId === productId && e.dataHora > base.dataHora && e.dataHora <= until) v += e.delta;
+    return v;
+  }
+
+  /* Estoque estimado atual a partir da base ativa. */
+  function computeStock(products, base, ledger) {
+    const rows = new Map(products.map(p => [p.id, { productId: p.id, base: +(base.itens[p.id] || 0), entradas: 0, saidas: 0, ajustes: 0, movimentos: 0 }]));
+    for (const e of ledger) {
+      if (e.dataHora <= base.dataHora) continue;
+      const r = rows.get(e.productId); if (!r) continue;
+      r[e.cat === 'divisao' ? 'base' : e.cat] += e.delta; r.movimentos++;
+    }
+    for (const r of rows.values()) r.atual = r.base + r.entradas + r.saidas + r.ajustes;
+    return rows;
+  }
+
+  function stockStatus(atual, minimo, pctCritico) {
+    if (atual <= 0) return 'zerado';
+    if (!minimo) return 'sem_minimo';
+    if (atual <= minimo * (pctCritico / 100)) return 'critico';
+    if (atual <= minimo) return 'baixo';
+    return 'saudavel';
+  }
+
+  /* Lê a mensagem da logística: "Limão 260", "Copinhos de papel - 10.000". */
+  function parseLogisticsMessage(text, products) {
+    products = products.filter(p => !p.arquivado);
+    const exact = new Map();
+    for (const p of products) { exact.set(norm(p.nome), p.id); for (const a of p.vinculos || []) exact.set(norm(a), p.id); }
+    const matched = {}, unmatched = [];
+    let pending = '';
+    for (const raw of String(text).split(/\r?\n/)) {
+      // tira o prefixo do WhatsApp: "[14:39, 10/8/2026] +55 11 95962-7870: "
+      let line = raw.replace(/^\s*\[[^\]]*\]\s*[^:]*:\s*/, '').trim();
+      if (!line) continue;
+      if (/aviso de contagem|^cliente\b|^itens?\s*:?$/i.test(line)) { pending = ''; continue; }
+      const m = line.match(/(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:unid\w*|uni\w*|und|un|pcs?)?\.?\s*$/i);
+      if (!m) { pending = line; continue; }
+      const qty = parseInt(m[1].replace(/\./g, ''), 10);
+      let label = line.slice(0, m.index).replace(/[-–—:|=•*]+\s*$/, '').replace(/^[-–—•*\s]+/, '').trim();
+      if (!label && pending) label = pending.replace(/[-–—:|=•*]+\s*$/, '').trim();
+      pending = '';
+      const name = norm(label);
+      if (!name) { unmatched.push(line); continue; }
+      let pid = exact.get(name);
+      if (!pid) {
+        const cands = products.filter(p => { const n = norm(p.nome); return n.includes(name) || name.includes(n); });
+        if (cands.length === 1) pid = cands[0].id;
+      }
+      if (pid) matched[pid] = qty; else unmatched.push(label + ': ' + qty);
+    }
+    return { matched, unmatched };
+  }
+
+  /* ===== Teste obrigatório (seção 23) rodado em memória ===== */
+  function runSelfTest() {
+    const products = [{ id: 't1', nome: 'Limão', sku: 'LIM-TESTE', vinculos: [] }];
+    const base = { id: 'T001', ehBase: true, dataHora: '2026-10-08T14:00:00', itens: { t1: 260 } };
+    let ledger = [], seq = 0;
+    const steps = [];
+    const run = (nome, rows, esperado, esperadoStatus) => {
+      const items = classifyRecords(rows, { products, ledger, baseDataHora: base.dataHora, defaultTipo: 'SAIDA', overrides: {} });
+      const entries = buildEntries(items, { seqStart: seq, importId: nome, criadoEm: 'teste' });
+      seq += entries.length; ledger = ledger.concat(entries);
+      const obtido = computeStock(products, base, ledger).get('t1').atual;
+      const statusOk = !esperadoStatus || items.every((it, k) => it.status === esperadoStatus[k]);
+      steps.push({ nome, esperado, obtido, ok: obtido === esperado && statusOk,
+        linhas: items.map(it => ({ pedido: it.parsed.pedido, data: it.parsed.dataHora, qtd: it.parsed.qtd, status: it.status })) });
+    };
+    run('Primeiro upload', [
+      { pedido: '#001', data: '08/10/2026 10:00', sku: 'LIM-TESTE', quantidade: 10 },
+      { pedido: '#002', data: '08/10/2026 13:00', sku: 'LIM-TESTE', quantidade: 5 },
+      { pedido: '#003', data: '08/10/2026 15:00', sku: 'LIM-TESTE', quantidade: 20 },
+      { pedido: '#004', data: '09/10/2026 10:00', sku: 'LIM-TESTE', quantidade: 15 }
+    ], 225, ['anterior', 'anterior', 'nova', 'nova']);
+    run('Segundo upload', [
+      { pedido: '#003', data: '08/10/2026 15:00', sku: 'LIM-TESTE', quantidade: 20 },
+      { pedido: '#004', data: '09/10/2026 10:00', sku: 'LIM-TESTE', quantidade: 15 },
+      { pedido: '#005', data: '10/10/2026 11:00', sku: 'LIM-TESTE', quantidade: 10 },
+      { pedido: '#006', data: '10/10/2026 16:00', sku: 'LIM-TESTE', quantidade: 5 }
+    ], 210, ['duplicada', 'duplicada', 'nova', 'nova']);
+    run('Segundo arquivo enviado de novo', [
+      { pedido: '#003', data: '08/10/2026 15:00', sku: 'LIM-TESTE', quantidade: 20 },
+      { pedido: '#004', data: '09/10/2026 10:00', sku: 'LIM-TESTE', quantidade: 15 },
+      { pedido: '#005', data: '10/10/2026 11:00', sku: 'LIM-TESTE', quantidade: 10 },
+      { pedido: '#006', data: '10/10/2026 16:00', sku: 'LIM-TESTE', quantidade: 5 }
+    ], 210, ['duplicada', 'duplicada', 'duplicada', 'duplicada']);
+    // Regra de data (seção 2) com ledger vazio
+    const regra = classifyRecords([
+      { pedido: '#120', data: '08/10/2026 10:00', sku: 'LIM-TESTE', quantidade: 1 },
+      { pedido: '#121', data: '08/10/2026 13:59', sku: 'LIM-TESTE', quantidade: 1 },
+      { pedido: '#122', data: '08/10/2026 14:00', sku: 'LIM-TESTE', quantidade: 1 },
+      { pedido: '#123', data: '08/10/2026 14:01', sku: 'LIM-TESTE', quantidade: 1 },
+      { pedido: '#124', data: '08/10/2026 16:30', sku: 'LIM-TESTE', quantidade: 1 },
+      { pedido: '#125', data: '09/10/2026 09:00', sku: 'LIM-TESTE', quantidade: 1 }
+    ], { products, ledger: [], baseDataHora: base.dataHora, defaultTipo: 'SAIDA', overrides: {} });
+    const esperadoRegra = ['anterior', 'anterior', 'anterior', 'nova', 'nova', 'nova'];
+    steps.push({ nome: 'Regra de data (#120 a #125)', esperado: 'IGNORAR ×3, PROCESSAR ×3',
+      obtido: regra.map(r => r.status === 'anterior' ? 'IGNORAR' : 'PROCESSAR').join(', '),
+      ok: regra.every((r, k) => r.status === esperadoRegra[k]),
+      linhas: regra.map(it => ({ pedido: it.parsed.pedido, data: it.parsed.dataHora, qtd: it.parsed.qtd, status: it.status })) });
+    return { ok: steps.every(s => s.ok), steps, final: computeStock(products, base, ledger).get('t1').atual };
+  }
+
+  const SEED = {
+    cliente: '2.131 — Blessy',
+    contagem: { id: 'C001', numero: 1, dataHora: '2026-10-08T14:00:00', origem: 'Logística (mensagem oficial)', obs: 'Contagem física oficial enviada pela logística. Ponto de partida do espelho de estoque.' },
+    produtos: [
+      ['Limão', 260, 'Sabores'], ['Maracujá', 73, 'Sabores'], ['Melancia', 38, 'Sabores'], ['Manga', 36, 'Sabores'],
+      ['Morango c/ kiwi', 16, 'Sabores'], ['Abacaxi c/ hortelã', 62, 'Sabores'],
+      ['Necessaire', 80, 'Brindes e acessórios'], ['Boné My Blessy Era', 113, 'Brindes e acessórios'], ['Boné logo B', 49, 'Brindes e acessórios'],
+      ['Ecobag', 294, 'Brindes e acessórios'], ['Piranha de flor', 486, 'Brindes e acessórios'],
+      ['Copinhos de papel', 10000, 'Copos e garrafas'], ['Garrafa de vidro', 2651, 'Copos e garrafas']
+    ]
+  };
+
+  return { norm, nowNaive, parseDateTime, parseQty, parseTipo, identKey, classifyRecords, buildEntries, baseFor, estimateAt,
+    computeStock, stockStatus, parseLogisticsMessage, runSelfTest, SEED };
+})();
+if (typeof module !== 'undefined') module.exports = Core;
+
+/* ===== Aplicação: persistência, telas e ações ===== */
+(() => {
+'use strict';
+const C = Core;
+
+/* ---------- Repositório (IndexedDB). Trocar esta camada por chamadas a um backend no futuro. ---------- */
+const STORES = ['products', 'counts', 'ledger', 'imports', 'errors', 'events', 'settings'];
+const Repo = {
+  db: null, ok: false,
+  open() {
+    return new Promise(res => {
+      try {
+        const rq = indexedDB.open('blessy-espelho-estoque', 1);
+        rq.onupgradeneeded = () => { for (const s of STORES) if (!rq.result.objectStoreNames.contains(s)) rq.result.createObjectStore(s, { keyPath: 'id' }); };
+        rq.onsuccess = () => { this.db = rq.result; this.ok = true; res(true); };
+        rq.onerror = () => res(false);
+        rq.onblocked = () => res(false);
+      } catch (e) { res(false); }
+    });
+  },
+  all(store) {
+    if (!this.ok) return Promise.resolve([]);
+    return new Promise((res, rej) => {
+      const rq = this.db.transaction(store).objectStore(store).getAll();
+      rq.onsuccess = () => res(rq.result || []); rq.onerror = () => rej(rq.error);
+    });
+  },
+  /* Grava várias coleções numa única transação: ou tudo entra, ou nada entra. */
+  commit(changes, clearFirst) {
+    if (!this.ok) return Promise.resolve();
+    const names = Object.keys(changes);
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction(names, 'readwrite');
+      for (const n of names) {
+        const st = tx.objectStore(n);
+        if (clearFirst) st.clear();
+        for (const o of changes[n]) st.put(o);
+      }
+      tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+    });
+  }
+};
+
+/* ---------- Modo Google (Apps Script): dados no Drive, compartilhados pela equipe ---------- */
+const IS_GOOGLE = !!(window.google && window.google.script && window.google.script.run);
+const SUPA_CFG = (!IS_GOOGLE && window.ESTOQUE_SUPABASE && window.ESTOQUE_SUPABASE.url) ? window.ESTOQUE_SUPABASE : null;
+const BACKEND_NOME = IS_GOOGLE ? 'Google Drive' : 'Supabase';
+let SB = null;
+let EQUIPE = '';
+const SupaApi = {
+  async rpc(fn, args) {
+    const { data, error } = await SB.rpc(fn, Object.assign({ p_codigo: EQUIPE }, args || {}));
+    if (error) throw new Error(error.message);
+    return data;
+  },
+  carregar() { return this.rpc('estoque_carregar'); },
+  versaoAtual() { return this.rpc('estoque_versao'); },
+  salvar(p) { return this.rpc('estoque_salvar', { p_base_versao: p.baseVersao, p_data: p.data, p_autor: p.autor }); }
+};
+function teamLink() { return location.origin + location.pathname + '?equipe=' + encodeURIComponent(EQUIPE); }
+const Remote = {
+  available: IS_GOOGLE || !!SUPA_CFG,
+  versao: 0, status: 'ok', salvoEm: null, pending: false, running: null,
+  call(fn, ...args) {
+    if (!IS_GOOGLE) return SupaApi[fn](...args);
+    return new Promise((res, rej) => { const r = google.script.run.withSuccessHandler(res).withFailureHandler(rej); r[fn].apply(r, args); });
+  },
+  snapshot() { return { products: S.products, counts: S.counts, ledger: S.ledger, imports: S.imports, errors: S.errors, events: S.events, settings: S.settings }; },
+  queue() { this.pending = true; if (!this.running) this.running = this.flush(); return this.running; },
+  async flush() {
+    while (this.pending) {
+      this.pending = false; this.status = 'salvando'; renderFoot();
+      const last = [...S.events].sort((a, b) => a.id < b.id ? 1 : -1)[0];
+      try {
+        const r = await this.call('salvar', { baseVersao: this.versao, autor: autor(), resumo: last ? last.texto : '', data: JSON.parse(JSON.stringify(this.snapshot())),
+          planilhas: IS_GOOGLE ? { estoque: stockExportRows(), ledger: ledgerExportRows([...S.ledger].sort((a, b) => a.dataHora < b.dataHora ? -1 : 1)) } : null });
+        if (r.ok) { this.versao = r.versao; this.status = 'ok'; this.salvoEm = C.nowNaive(); }
+        else if (r.conflito) {
+          applyRemote(r.data); this.versao = r.versao; this.status = 'ok'; this.pending = false;
+          toast(`${r.autor || 'Outra pessoa'} salvou uma alteração antes de você. Atualizei os dados; confira e refaça sua última ação.`, true); render();
+        }
+      } catch (e) { this.status = 'erro'; this.pending = false; toast(`Não consegui salvar no ${BACKEND_NOME}: ` + (e && e.message || e), true); }
+    }
+    this.running = null; renderFoot();
+  }
+};
+function applyRemote(d) {
+  if (!d) return;
+  for (const k of ['products', 'counts', 'ledger', 'imports', 'errors', 'events']) S[k] = d[k] || [];
+  S.settings = d.settings;
+}
+function autor() { try { return localStorage.getItem('estoque_autor') || ''; } catch (e) { return ''; } }
+function askAuthor() {
+  return new Promise(res => {
+    const m = openModal({ title: 'Quem está usando?', sub: 'Seu nome fica registrado em cada lançamento que você fizer.', body: `<div class="field"><label for="auN">Seu nome</label><input class="input" id="auN" placeholder="Ex.: Lari"></div>`, foot: `<button class="btn primary" id="auGo">Entrar</button>` });
+    const go = () => { const v = m.querySelector('#auN').value.trim(); if (!v) return toast('Digite seu nome.', true); try { localStorage.setItem('estoque_autor', v); } catch (e) {} AUTOR_MEM = v; closeModal(); res(v); };
+    m.querySelector('#auGo').onclick = go; m.querySelector('#auN').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+  });
+}
+let AUTOR_MEM = '';
+window.addEventListener('beforeunload', e => { if (Remote.available && (Remote.running || Remote.status === 'erro')) { e.preventDefault(); e.returnValue = ''; } });
+document.addEventListener('visibilitychange', async () => {
+  if (!Remote.available || document.hidden || Remote.running) return;
+  try { const v = await Remote.call('versaoAtual'); if (v.versao > Remote.versao && !Remote.running) { const r = await Remote.call('carregar'); applyRemote(r.data); Remote.versao = r.versao; render(); toast(`Dados atualizados (última alteração por ${v.autor || 'outra pessoa'}).`); } } catch (e) {}
+});
+
+/* ---------- Estado em memória ---------- */
+const S = { products: [], counts: [], ledger: [], imports: [], errors: [], events: [], settings: null };
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function nextId(prefix, width) {
+  S.settings.seq[prefix] = (S.settings.seq[prefix] || 0) + 1;
+  return prefix + String(S.settings.seq[prefix]).padStart(width, '0');
+}
+function mkEvent(tipo, texto, extra) {
+  return Object.assign({ id: nextId('V', 6), tipo, texto, em: C.nowNaive(), autor: autor() || AUTOR_MEM }, extra || {});
+}
+async function save(changes) {
+  changes.settings = [S.settings];
+  for (const [k, arr] of Object.entries(changes)) {
+    if (k === 'settings') continue;
+    for (const o of arr) { if (k !== 'products' && !o.criadoPor) o.criadoPor = autor() || AUTOR_MEM || ''; const list = S[k]; const i = list.findIndex(x => x.id === o.id); if (i >= 0) list[i] = o; else list.push(o); }
+  }
+  try { await Repo.commit(changes); }
+  catch (e) { toast('Não foi possível salvar: ' + (e && e.message || e), true); }
+}
+
+function seedState() {
+  const sd = C.SEED;
+  const products = sd.produtos.map((p, i) => ({ id: 'P' + String(i + 1).padStart(3, '0'), nome: p[0], sku: '', categoria: p[2], unidade: 'un', estoqueMinimo: 0, observacao: '', vinculos: p[0] === 'Boné My Blessy Era' ? ['Bone im my blessy era'] : [], emoji: EMOJI_PADRAO[C.norm(p[0])] || '', ordem: i + 1, criadoEm: C.nowNaive() }));
+  const itens = {}; products.forEach((p, i) => { itens[p.id] = sd.produtos[i][1]; });
+  const settings = { id: 'settings', cliente: sd.cliente, baseCountId: 'C001', pctCritico: 50, seq: { P: products.length, C: 1, M: 0, I: 0, E: 0, V: 0 }, mappings: {}, ultimoBackup: null, criadoEm: C.nowNaive(), versao: 2 };
+  const count = Object.assign({}, sd.contagem, { itens, ehBase: true, baseDesde: sd.contagem.dataHora, registradaEm: C.nowNaive(), status: 'base' });
+  return { products, counts: [count], ledger: [], imports: [], errors: [], events: [], settings };
+}
+
+async function load() {
+  let settings = null;
+  if (Remote.available) {
+    Repo.ok = true; Repo.commit = () => { Remote.queue(); return Promise.resolve(); };
+    const r = await Remote.call('carregar'); // se falhar, não semeia nada por cima
+    Remote.versao = r.versao || 0;
+    if (r.data) { applyRemote(r.data); settings = S.settings; }
+  } else {
+    const ok = await Repo.open();
+    if (ok) for (const s of STORES) S[s] = await Repo.all(s);
+    settings = (S.settings && S.settings.find) ? S.settings.find(x => x.id === 'settings') : null;
+  }
+  if (!settings) {
+    const st = seedState();
+    Object.assign(S, st);
+    S.events.push(mkEvent('sistema', `Sistema iniciado com a Contagem-base #001 (08/10/2026 14:00) enviada pela logística: ${fmt(Object.values(S.counts[0].itens).reduce((a, x) => a + x, 0))} unidades.`));
+    await Repo.commit({ products: S.products, counts: S.counts, events: S.events, settings: [S.settings] });
+  } else {
+    S.settings = settings;
+  }
+  {
+    if ((S.settings.versao || 1) < 2) { // ajuste de nomes usados pela logística
+      const b = S.products.find(p => p.nome === 'Boné My Blessy Era');
+      const ch = [];
+      if (b && !(b.vinculos || []).some(v => C.norm(v) === 'bone im my blessy era')) { b.vinculos = [...(b.vinculos || []), 'Bone im my blessy era']; ch.push(b); }
+      S.settings.versao = 2; await Repo.commit({ products: ch, settings: [S.settings] });
+    }
+    if (S.settings.versao < 3) { // detalhamento das ecobags informado pela logística em 08/10/2026
+      const eb = S.products.find(p => !p.arquivado && C.norm(p.nome) === 'ecobag');
+      const base = S.counts.find(c => c.id === 'C001');
+      if (eb && base && S.settings.baseCountId === 'C001') {
+        const at = base.dataHora.slice(0, 17) + '01';
+        const qtd = C.estimateAt(eb.id, base, S.ledger, at);
+        await doSplit(eb, [{ nome: 'Ecobag Blessy', q: 0 }, { nome: 'Ecobag Greens Club', q: 294 }, { nome: 'Bolsa Greens Club', q: 19 }], qtd, at,
+          'Detalhamento enviado pela logística em 08/10/2026 (WhatsApp): Ecobag Blessy 0, Ecobag Greens Club 294, Bolsa Greens Club 19. As 19 bolsas não estavam na contagem original.');
+      }
+      S.settings.versao = 3; await Repo.commit({ settings: [S.settings] });
+    }
+    if (S.settings.versao < 4) { // emojis por sabor/produto
+      const ch = S.products.filter(p => !p.emoji && EMOJI_PADRAO[C.norm(p.nome)]);
+      ch.forEach(p => { p.emoji = EMOJI_PADRAO[C.norm(p.nome)]; });
+      S.settings.versao = 4; await Repo.commit({ products: ch, settings: [S.settings] });
+    }
+  }
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+}
+
+/* ---------- Derivados ---------- */
+const prodById = id => S.products.find(p => p.id === id);
+const EMOJI_PADRAO = { 'limao': '🍋', 'maracuja': '💛', 'melancia': '🍉', 'manga': '🥭', 'morango c/ kiwi': '🍓🥝', 'abacaxi c/ hortela': '🍍🌿',
+  'necessaire': '👝', 'bone my blessy era': '🧢', 'bone logo b': '🧢', 'ecobag': '🛍️', 'ecobag blessy': '🛍️', 'ecobag greens club': '🛍️', 'bolsa greens club': '👜',
+  'piranha de flor': '🌸', 'copinhos de papel': '🥤', 'garrafa de vidro': '🍶' };
+const pn = p => p ? ((p.emoji ? p.emoji + ' ' : '') + p.nome) : '';
+const prodName = id => { const p = prodById(id); return p ? pn(p) : id; };
+const prodPlain = id => (prodById(id) || {}).nome || id;
+const activeBase = () => S.counts.find(c => c.id === S.settings.baseCountId);
+const allProducts = () => [...S.products].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+const sortedProducts = () => allProducts().filter(p => !p.arquivado);
+function stockRows() {
+  const base = activeBase();
+  const m = C.computeStock(S.products, base, S.ledger);
+  return sortedProducts().map(p => { const r = m.get(p.id); return Object.assign({ p, status: C.stockStatus(r.atual, +p.estoqueMinimo || 0, S.settings.pctCritico) }, r); });
+}
+const pendingErrors = () => S.errors.filter(e => e.status === 'pendente');
+
+/* ---------- Utilidades de formato ---------- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => (+n || 0).toLocaleString('pt-BR');
+const sgn = n => n > 0 ? '+' + fmt(n) : n < 0 ? '−' + fmt(Math.abs(n)) : '0';
+const dcls = n => n > 0 ? 'delta-pos' : n < 0 ? 'delta-neg' : 'muted';
+function fdt(v, short) {
+  if (!v) return '—';
+  const [d, t] = v.split('T'); const [y, mo, da] = d.split('-');
+  return short ? `${da}/${mo} ${t.slice(0, 5)}` : `${da}/${mo}/${y} ${t.slice(0, 5)}`;
+}
+const countLabel = c => '#' + String(c.numero).padStart(3, '0');
+const STATUS_LABEL = { saudavel: 'Saudável', baixo: 'Baixo', critico: 'Crítico', zerado: 'Zerado', sem_minimo: 'Sem mínimo' };
+const ROW_LABEL = { nova: 'Nova', duplicada: 'Já processada', anterior: 'Anterior à base', erro: 'Erro' };
+const TIPO_LABEL = { SAIDA: 'Saída', ENTRADA: 'Entrada', AJUSTE: 'Ajuste', ESTORNO: 'Estorno', DIVISAO: 'Divisão em modelos' };
+const pill = (cls, txt) => `<span class="pill ${cls}">${esc(txt)}</span>`;
+const toLocalInput = naive => naive ? naive.slice(0, 16) : '';
+const fromLocalInput = v => v ? (v.length === 16 ? v + ':00' : v) : '';
+
+function toast(msg, bad) {
+  const el = document.createElement('div'); el.className = 'toast' + (bad ? ' bad' : ''); el.textContent = msg;
+  document.getElementById('toasts').appendChild(el); setTimeout(() => el.remove(), bad ? 6000 : 3500);
+}
+
+/* ---------- Modal e confirmação no próprio app ---------- */
+let modalEl = null;
+function openModal({ title, sub, body, foot, wide, onMount }) {
+  closeModal();
+  modalEl = document.createElement('div'); modalEl.className = 'scrim';
+  modalEl.innerHTML = `<div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>${esc(title)}</h2>${sub ? `<p class="muted small" style="margin-top:4px">${sub}</p>` : ''}</div><button class="x" data-act="closeModal" aria-label="Fechar">×</button></div><div class="modal-body">${body}</div>${foot ? `<div class="modal-foot">${foot}</div>` : ''}</div>`;
+  modalEl.addEventListener('mousedown', e => { if (e.target === modalEl) closeModal(); });
+  document.body.appendChild(modalEl);
+  if (onMount) onMount(modalEl);
+  const f = modalEl.querySelector('input:not([type=hidden]),select,textarea'); if (f) setTimeout(() => f.focus(), 30);
+  return modalEl;
+}
+function closeModal() { if (modalEl) { modalEl.remove(); modalEl = null; } }
+function confirmBox({ title, text, ok = 'Confirmar', danger }) {
+  return new Promise(res => {
+    const m = openModal({ title, body: `<p>${text}</p>`, foot: `<button class="btn" data-x="no">Cancelar</button><button class="btn ${danger ? 'danger' : 'primary'}" data-x="yes">${esc(ok)}</button>` });
+    m.querySelector('[data-x=no]').onclick = () => { closeModal(); res(false); };
+    m.querySelector('[data-x=yes]').onclick = () => { closeModal(); res(true); };
+  });
+}
+
+/* ---------- Arquivos: salvar (capability downloads no Claude; link comum fora dele) ---------- */
+let downloadsP = null;
+function getDownloads() {
+  if (!downloadsP) downloadsP = (window.claude && typeof window.claude.use === 'function') ? Promise.race([window.claude.use('downloads').catch(() => null), new Promise(r => setTimeout(() => r(null), 4000))]) : Promise.resolve(null);
+  return downloadsP;
+}
+function blobToBase64(blob) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); }); }
+async function saveFile(filename, data) {
+  if (IS_GOOGLE) {
+    try {
+      const isBlob = data instanceof Blob;
+      const r = await Remote.call('salvarArquivo', filename, isBlob ? await blobToBase64(data) : data, isBlob);
+      openModal({ title: 'Arquivo salvo no Drive', body: `<p><b>${esc(r.nome)}</b> foi salvo na pasta <b>${esc(r.pasta)}</b>, ao lado da planilha do estoque.</p><p><a href="${esc(r.url)}" target="_blank" rel="noopener">Abrir no Google Drive</a></p>`, foot: `<button class="btn primary" data-act="closeModal">Fechar</button>` });
+      return true;
+    } catch (e) { toast('Não consegui salvar no Drive: ' + (e && e.message || e), true); return false; }
+  }
+  const d = await getDownloads();
+  if (d) {
+    try { await d.save({ filename, data }); toast('Arquivo pronto: ' + filename); return true; }
+    catch (e) { if (e && e.code === 'declined') { toast('Download cancelado'); return false; } if (e && e.code === 'rate_limited') { toast('Já existe um download aguardando confirmação.', true); return false; } }
+  }
+  try {
+    const blob = data instanceof Blob ? data : new Blob([data]);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast('Arquivo gerado: ' + filename); return true;
+  } catch (e) { toast('Não foi possível gerar o arquivo neste ambiente.', true); return false; }
+}
+function csvOf(rows) {
+  const q = v => { const s = String(v ?? ''); return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return '﻿' + rows.map(r => r.map(q).join(';')).join('\r\n');
+}
+function xlsxOf(sheets) {
+  if (!window.XLSX) throw new Error('Biblioteca de planilhas indisponível');
+  const wb = XLSX.utils.book_new();
+  for (const [name, rows] of sheets) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name.slice(0, 31));
+  return new Blob([XLSX.write(wb, { type: 'array', bookType: 'xlsx' })]);
+}
+async function exportTable(base, rows, kind) {
+  const stamp = C.nowNaive().slice(0, 16).replace(/[:T]/g, '-');
+  if (kind === 'xlsx') { try { return saveFile(`${base}_${stamp}.xlsx`, xlsxOf([[base, rows]])); } catch (e) { toast(e.message, true); return; } }
+  return saveFile(`${base}_${stamp}.csv`, csvOf(rows));
+}
+
+/* ---------- Leitura de CSV / XLSX ---------- */
+function decodeText(buf) {
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf).replace(/^﻿/, ''); }
+  catch (e) { return new TextDecoder('windows-1252').decode(buf); }
+}
+function parseCSV(text) {
+  const first = text.split(/\r?\n/).find(l => l.trim()) || '';
+  const cnt = ch => first.split(ch).length - 1;
+  const delim = [';', ',', '\t'].sort((a, b) => cnt(b) - cnt(a))[0];
+  const rows = []; let row = [], cell = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else inQ = false; } else cell += ch; }
+    else if (ch === '"') inQ = true;
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+async function readSpreadsheet(file) {
+  const buf = await file.arrayBuffer();
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.csv') || name.endsWith('.txt')) return { sheets: { 'CSV': parseCSV(decodeText(buf)) } };
+  if (!window.XLSX) throw new Error('Não foi possível carregar o leitor de XLSX (sem internet?). Exporte o arquivo do Bling como CSV.');
+  const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+  const sheets = {};
+  for (const n of wb.SheetNames) sheets[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: '' });
+  return { sheets };
+}
+function splitHeader(rows) {
+  const hi = rows.findIndex(r => r.filter(c => String(c).trim() !== '').length >= 2);
+  if (hi < 0) return { header: [], data: [] };
+  const header = rows[hi].map((h, i) => String(h).trim() || `Coluna ${i + 1}`);
+  const data = rows.slice(hi + 1).map((r, k) => ({ cells: r, linha: hi + k + 2 })).filter(r => r.cells.some(c => String(c).trim() !== ''));
+  return { header, data };
+}
+
+/* ---------- Mapeamento de colunas ---------- */
+const FIELDS = [
+  { k: 'pedido', label: 'Número do pedido', req: 'id', hint: 'Usado como referência e para não descontar duas vezes.' },
+  { k: 'data', label: 'Data da movimentação', req: true, hint: 'Pode conter a hora junto (08/10/2026 14:01).' },
+  { k: 'hora', label: 'Hora', hint: 'Só se a hora vier em coluna separada.' },
+  { k: 'sku', label: 'SKU / Código', req: 'prod', hint: 'Identifica o produto. Se vazio, uso o nome.' },
+  { k: 'produto', label: 'Produto / Descrição', req: 'prod' },
+  { k: 'quantidade', label: 'Quantidade', req: true },
+  { k: 'tipo', label: 'Tipo (entrada/saída)', hint: 'Opcional. Sem ela, vale o tipo padrão abaixo.' },
+  { k: 'idUnico', label: 'ID único da movimentação', req: 'id', hint: 'Só use se cada linha tiver um ID diferente (não o nº do pedido).' }
+];
+function guessMapping(header) {
+  const H = header.map(h => C.norm(h));
+  const used = new Set(); const m = {};
+  const pick = (k, test) => { const i = H.findIndex((h, j) => !used.has(j) && test(h)); if (i >= 0) { m[k] = i; used.add(i); } };
+  pick('idUnico', h => /id (unico|da movimentacao|movimentacao)|id_movimentacao/.test(h));
+  pick('quantidade', h => /^(qtd|qtde|quant|quantidade)/.test(h) || h.includes('quantidade'));
+  pick('hora', h => /^hora/.test(h) && !h.includes('data'));
+  pick('data', h => h.includes('data') || h === 'dt' || h.includes('emissao'));
+  pick('pedido', h => h.includes('pedido') || ['numero', 'n', 'no', 'nº', 'id', 'numero da venda', 'venda'].includes(h) || h.includes('n° pedido'));
+  pick('sku', h => h === 'sku' || h.includes('sku') || /^cod(igo)?( do produto| produto)?$/.test(h) || h === 'codigo');
+  pick('produto', h => h.includes('produto') || h.includes('descricao') || h === 'item' || h === 'nome');
+  pick('tipo', h => /^(tipo|operacao|movimento|natureza|entrada\/saida|e\/s)/.test(h));
+  return m;
+}
+const headerSig = header => header.map(h => C.norm(h)).join('|');
+
+/* ========================================================================== */
+/*                                  TELAS                                      */
+/* ========================================================================== */
+const NAV = [
+  ['painel', 'Painel'], ['importar', 'Importar do Bling'], ['movimentacoes', 'Ledger'], ['erros', 'Com erro'],
+  ['contagens', 'Contagens'], ['importacoes', 'Importações'], ['produtos', 'Produtos'], ['config', 'Backup e ajustes']
+];
+let route = 'painel';
+const UI = { q: '', status: 'todos', cat: 'todas', mv: { q: '', prod: '', tipo: '', de: '', ate: '' }, countView: null, errShowResolved: false };
+
+function renderNav() {
+  const pe = pendingErrors().length;
+  document.getElementById('nav').innerHTML = NAV.map(([k, l]) => `<a href="#${k}" class="${route === k ? 'on' : ''}">${l}${k === 'erros' && pe ? `<span class="badge">${pe}</span>` : ''}</a>`).join('');
+  const lb = S.settings.ultimoBackup;
+  renderFoot();
+}
+function renderFoot() {
+  const el = document.getElementById('railfoot'); if (!el) return;
+  if (Remote.available) {
+    const st = Remote.status;
+    el.innerHTML = `<div><span class="dot ${st === 'erro' ? 'off' : ''}"></span>${st === 'salvando' ? `Salvando no ${BACKEND_NOME}…` : st === 'erro' ? 'Não salvo. <button class="btn ghost sm" data-act="retrySave">Tentar de novo</button>' : `Salvo no ${BACKEND_NOME}`}</div><div>${Remote.salvoEm ? 'Último salvamento: ' + fdt(Remote.salvoEm) : 'Versão ' + Remote.versao}</div>${autor() ? `<div>Você: ${esc(autor())} · <button class="btn ghost sm" data-act="changeAuthor">trocar</button></div>` : ''}${SUPA_CFG ? `<div><button class="btn ghost sm" data-act="copyTeamLink">Copiar link da equipe</button></div>` : ''}`;
+    return;
+  }
+  const lb = S.settings && S.settings.ultimoBackup;
+  el.innerHTML = `<div><span class="dot ${Repo.ok ? '' : 'off'}"></span>${Repo.ok ? 'Salvo neste navegador' : 'Sem armazenamento local'}</div><div>Último backup: ${lb ? fdt(lb) : 'nunca'}</div>`;
+}
+function render() {
+  renderNav();
+  const v = document.getElementById('view');
+  const fn = VIEWS[route] || VIEWS.painel;
+  v.innerHTML = fn();
+  if (AFTER[route]) AFTER[route]();
+}
+function go(r) { if (location.hash.slice(1) !== r) location.hash = r; else { route = r; render(); } }
+window.addEventListener('hashchange', () => { const r = location.hash.slice(1); route = VIEWS[r] ? r : 'painel'; if (r !== 'contagens') UI.countView = null; if (route === 'importar' && IMP.step === 4) resetImport(); render(); window.scrollTo(0, 0); });
+
+function baseStrip() {
+  const b = activeBase();
+  const total = Object.values(b.itens).reduce((a, x) => a + +x, 0);
+  return `<div class="basestrip"><span class="tag">BASE ${countLabel(b)}</span><span><b>${fdt(b.dataHora)}</b></span><span class="sep">|</span><span class="muted">Cliente ${esc(S.settings.cliente)}</span><span class="sep">|</span><span class="muted">${fmt(total)} un. contadas</span><span class="sep">|</span><span class="muted small">Só entram no cálculo movimentações depois de ${fdt(b.dataHora)}</span></div>`;
+}
+
+const VIEWS = {};
+const AFTER = {};
+
+/* ---------------- PAINEL ---------------- */
+VIEWS.painel = () => {
+  const rows = stockRows();
+  const tot = rows.reduce((a, r) => ({ base: a.base + r.base, ent: a.ent + r.entradas, sai: a.sai + r.saidas, aj: a.aj + r.ajustes, at: a.at + r.atual }), { base: 0, ent: 0, sai: 0, aj: 0, at: 0 });
+  const imps = S.imports;
+  const sum = k => imps.reduce((a, i) => a + (i[k] || 0), 0);
+  const lastImp = [...imps].sort((a, b) => a.criadoEm < b.criadoEm ? 1 : -1)[0];
+  const lastCount = [...S.counts].sort((a, b) => a.dataHora < b.dataHora ? 1 : -1)[0];
+  const pe = pendingErrors().length;
+  const cats = [...new Set(S.products.map(p => p.categoria).filter(Boolean))];
+  const alerts = rows.filter(r => ['critico', 'zerado', 'baixo'].includes(r.status)).length;
+  const needBackup = !Remote.available && S.ledger.length && (!S.settings.ultimoBackup || S.settings.ultimoBackup.slice(0, 10) < daysAgo(7));
+  return `
+  <div class="page-head"><div><h1>Estoque estimado</h1><p>Contagem-base da logística + movimentações do Bling + ajustes manuais. Clique em um produto para ver como cada número foi calculado.</p></div>
+  <div class="actions"><button class="btn" data-act="newEntry">+ Registrar entrada</button><button class="btn" data-act="newAdjust">+ Novo ajuste</button><a class="btn primary" href="#importar">Importar do Bling</a></div></div>
+  ${baseStrip()}
+  ${pe ? `<div class="notice bad"><div class="grow"><b>${pe} movimentação(ões) com erro aguardando correção.</b> Elas ainda não entraram no estoque.</div><a class="btn sm" href="#erros">Resolver</a></div>` : ''}
+  ${(() => { const eb = S.products.find(p => !p.arquivado && C.norm(p.nome) === 'ecobag'); return eb ? `<div class="notice"><div class="grow"><b>Ecobag ainda está somada.</b> Quando a logística mandar quanto tem de cada modelo (Ecobag Blessy, Ecobag Greens Club, Bolsa Greens Club), divida aqui.</div><button class="btn sm" data-act="splitProduct" data-pid="${eb.id}">Dividir Ecobag</button></div>` : ''; })()}
+  ${needBackup ? `<div class="notice warn"><div class="grow"><b>Faça um backup.</b> Os dados ficam salvos só neste navegador. ${S.settings.ultimoBackup ? 'O último backup foi em ' + fdt(S.settings.ultimoBackup) + '.' : 'Ainda não existe nenhum backup.'}</div><button class="btn sm" data-act="exportBackup">Exportar backup</button></div>` : ''}
+  <div class="grid-cards">
+    <div class="card metric hero"><div class="lab">Unidades em estoque</div><div class="val">${fmt(tot.at)}</div><div class="sub">base ${fmt(tot.base)} · ${sgn(tot.at - tot.base)} desde a contagem</div></div>
+    <div class="card metric"><div class="lab">Produtos / SKUs</div><div class="val">${sortedProducts().length}</div><div class="sub">${alerts ? alerts + ' em alerta' : 'nenhum em alerta'}</div></div>
+    <div class="card metric"><div class="lab">Entradas</div><div class="val ${tot.ent ? 'pos' : ''}">${sgn(tot.ent)}</div><div class="sub">desde a base ativa</div></div>
+    <div class="card metric"><div class="lab">Saídas</div><div class="val ${tot.sai ? 'neg' : ''}">${sgn(tot.sai)}</div><div class="sub">desde a base ativa</div></div>
+    <div class="card metric"><div class="lab">Ajustes</div><div class="val">${sgn(tot.aj)}</div><div class="sub">manuais e estornos</div></div>
+  </div>
+  <div class="grid-cards">
+    <div class="card metric"><div class="lab">Última contagem física</div><div class="val" style="font-size:1.15rem">${countLabel(lastCount)} · ${fdt(lastCount.dataHora, true)}</div><div class="sub">${lastCount.ehBase ? 'é a base ativa' : 'aguardando conciliação'}</div></div>
+    <div class="card metric"><div class="lab">Última atualização via Bling</div><div class="val" style="font-size:1.15rem">${lastImp ? fdt(lastImp.criadoEm) : '—'}</div><div class="sub">${lastImp ? esc(lastImp.arquivo) : 'nenhuma importação ainda'}</div></div>
+    <div class="card metric click" data-go="movimentacoes"><div class="lab">Processadas</div><div class="val">${fmt(sum('novas'))}</div><div class="sub">lançadas no ledger</div></div>
+    <div class="card metric click" data-go="importacoes"><div class="lab">Ignoradas</div><div class="val">${fmt(sum('anteriores'))}</div><div class="sub">anteriores à base</div></div>
+    <div class="card metric click" data-go="importacoes"><div class="lab">Duplicadas</div><div class="val">${fmt(sum('duplicadas'))}</div><div class="sub">não descontadas de novo</div></div>
+    <div class="card metric click" data-go="erros"><div class="lab">Com erro</div><div class="val ${pe ? 'neg' : ''}">${fmt(pe)}</div><div class="sub">${fmt(S.errors.length - pe)} já resolvidas</div></div>
+  </div>
+  <div class="section-title"><h2>Tabela de estoque</h2></div>
+  <div class="panel">
+    <div class="panel-head">
+      <div class="filters">
+        <input class="input search" id="q" placeholder="Buscar produto ou SKU" value="${esc(UI.q)}">
+        <select class="input" id="cat"><option value="todas">Todas as categorias</option>${cats.map(c => `<option ${UI.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+      </div>
+      <div class="chips" id="stchips">${['todos', 'saudavel', 'baixo', 'critico', 'zerado', 'sem_minimo'].map(s => `<button class="chip ${UI.status === s ? 'on' : ''}" data-st="${s}">${s === 'todos' ? 'Todos' : STATUS_LABEL[s]}</button>`).join('')}</div>
+    </div>
+    <div class="tablewrap" id="stocktable">${stockTable(rows)}</div>
+  </div>`;
+};
+function daysAgo(n) { const d = new Date(Date.now() - n * 864e5); return d.toISOString().slice(0, 10); }
+function stockTable(rows) {
+  const q = C.norm(UI.q);
+  const f = rows.filter(r => (!q || C.norm(r.p.nome + ' ' + r.p.sku).includes(q)) && (UI.status === 'todos' || r.status === UI.status) && (UI.cat === 'todas' || r.p.categoria === UI.cat));
+  if (!f.length) return `<div class="empty">Nenhum produto com esses filtros.</div>`;
+  const t = f.reduce((a, r) => { a.b += r.base; a.e += r.entradas; a.s += r.saidas; a.a += r.ajustes; a.t += r.atual; return a; }, { b: 0, e: 0, s: 0, a: 0, t: 0 });
+  return `<table><thead><tr><th>SKU</th><th>Produto</th><th class="num">Estoque-base</th><th class="num">Entradas</th><th class="num">Saídas</th><th class="num">Ajustes</th><th class="num">Estoque atual</th><th>Status</th></tr></thead><tbody>
+  ${f.map(r => `<tr class="click" data-audit="${r.p.id}"><td class="mono">${r.p.sku ? esc(r.p.sku) : '<span class="muted">sem SKU</span>'}</td><td class="prod">${esc(pn(r.p))}<div class="muted small">${esc(r.p.categoria || '')}</div></td><td class="num">${fmt(r.base)}</td><td class="num ${dcls(r.entradas)}">${sgn(r.entradas)}</td><td class="num ${dcls(r.saidas)}">${sgn(r.saidas)}</td><td class="num ${dcls(r.ajustes)}">${sgn(r.ajustes)}</td><td class="num strong ${r.atual < 0 ? 'delta-neg' : ''}">${fmt(r.atual)}</td><td>${pill(r.status, STATUS_LABEL[r.status])}${r.atual < 0 ? ' <span class="pill bad">negativo</span>' : ''}</td></tr>`).join('')}
+  </tbody><tfoot><tr><td></td><td>Total (${f.length})</td><td class="num">${fmt(t.b)}</td><td class="num">${sgn(t.e)}</td><td class="num">${sgn(t.s)}</td><td class="num">${sgn(t.a)}</td><td class="num">${fmt(t.t)}</td><td></td></tr></tfoot></table>`;
+}
+AFTER.painel = () => {
+  const re = () => { document.getElementById('stocktable').innerHTML = stockTable(stockRows()); };
+  document.getElementById('q').oninput = e => { UI.q = e.target.value; re(); };
+  document.getElementById('cat').onchange = e => { UI.cat = e.target.value; re(); };
+  document.getElementById('stchips').onclick = e => { const b = e.target.closest('[data-st]'); if (!b) return; UI.status = b.dataset.st; document.querySelectorAll('#stchips .chip').forEach(c => c.classList.toggle('on', c === b)); re(); };
+};
+
+/* ---------------- AUDITORIA DO PRODUTO ---------------- */
+function openAudit(pid) {
+  const p = prodById(pid); const r = stockRows().find(x => x.p.id === pid);
+  const bases = S.counts.filter(c => c.ehBase).sort((a, b) => a.dataHora < b.dataHora ? -1 : 1);
+  const others = S.counts.filter(c => !c.ehBase);
+  const entries = S.ledger.filter(e => e.productId === pid).sort((a, b) => a.dataHora < b.dataHora ? -1 : a.dataHora > b.dataHora ? 1 : a.seq - b.seq);
+  const line = (e, run) => {
+    let what;
+    if (e.tipo === 'SAIDA' || e.tipo === 'ENTRADA') what = `${e.tipo === 'SAIDA' ? 'Pedido' : 'Entrada'} ${esc(e.ref || e.idUnico)} <span class="muted small">· ${e.importId ? 'importação ' + e.importId : e.origem === 'manual' ? 'lançada à mão' + (e.obs ? ' · ' + esc(e.obs) : '') : 'corrigida manualmente'}</span>`;
+    else if (e.tipo === 'AJUSTE') what = `Ajuste: ${esc(e.motivo)}${e.obs ? ` <span class="muted small">· ${esc(e.obs)}</span>` : ''}`;
+    else if (e.tipo === 'DIVISAO') what = `Divisão em modelos <span class="muted small">· ${esc(e.obs)}</span>`;
+    else what = `Estorno de ${esc(e.estornoDe)}: ${esc(e.motivo)}`;
+    return `<div class="tl ${e.estornadoPor ? 'reversed' : ''}"><div class="when">${fdt(e.dataHora, true)}</div><div class="what">${what} <span class="mono muted">${e.id}</span></div><div class="num ${dcls(e.delta)}">${sgn(e.delta)}</div><div class="run">${fmt(run)}</div></div>`;
+  };
+  let html = '';
+  const pre = bases.length ? entries.filter(e => e.dataHora <= bases[0].dataHora) : [];
+  if (pre.length) html += `<details class="period"><summary>Lançamentos anteriores à primeira contagem (${pre.length}) — já contemplados na contagem</summary>${pre.map(e => line(e, 0)).join('')}</details>`;
+  bases.forEach((b, i) => {
+    const next = bases[i + 1];
+    const es = entries.filter(e => e.dataHora > b.dataHora && (!next || e.dataHora <= next.dataHora));
+    const infos = others.filter(c => c.dataHora > b.dataHora && (!next || c.dataHora <= next.dataHora));
+    let run = +(b.itens[pid] || 0);
+    let body = `<div class="tl basehead"><div class="when">${fdt(b.dataHora, true)}</div><div><b>Contagem-base ${countLabel(b)}</b> <span class="small">· ${esc(b.origem || 'logística')}</span></div><div class="num"><b>+${fmt(run)}</b></div><div class="run">${fmt(run)}</div></div>`;
+    const timeline = [...es.map(e => ({ t: e.dataHora, e })), ...infos.map(c => ({ t: c.dataHora, c }))].sort((x, y) => x.t < y.t ? -1 : x.t > y.t ? 1 : 0);
+    for (const it of timeline) {
+      if (it.e) { run += it.e.delta; body += line(it.e, run); }
+      else { const fis = +(it.c.itens[pid] ?? 0); body += `<div class="tl countinfo"><div class="when">${fdt(it.c.dataHora, true)}</div><div>Contagem ${countLabel(it.c)} registrada (não virou base): logística informou <b>${fmt(fis)}</b>, nosso estimado era ${fmt(run)} → ${sgn(fis - run)}</div><div></div><div class="run"></div></div>`; }
+    }
+    if (next) {
+      const fis = +(next.itens[pid] ?? 0);
+      const cz = next.conciliacao && next.conciliacao.rows.find(x => x.productId === pid);
+      const est = cz ? cz.nosso : run;
+      body += `<div class="tl countinfo"><div class="when">${fdt(next.dataHora, true)}</div><div>Contagem ${countLabel(next)}: estimado <b>${fmt(est)}</b>, logística informou <b>${fmt(fis)}</b> · divergência <b class="${dcls(fis - est)}">${sgn(fis - est)}</b>. A contagem virou o novo estoque-base.</div><div></div><div class="run"></div></div>`;
+      html += `<details class="period"><summary>Período da base ${countLabel(b)} (${fdt(b.dataHora, true)} → ${fdt(next.dataHora, true)}) · ${es.length} lançamentos</summary>${body}</details>`;
+    } else {
+      body += `<div class="tl final"><div class="when">agora</div><div>Estoque estimado atual</div><div class="num">${fmt(run)}</div><div class="run"></div></div>`;
+      html += `<div class="timeline">${body}</div>`;
+    }
+  });
+  openModal({ title: pn(p), wide: true, sub: `${p.sku ? 'SKU ' + esc(p.sku) + ' · ' : 'Sem SKU cadastrado · '}${esc(p.categoria || '')} · mínimo ${p.estoqueMinimo ? fmt(p.estoqueMinimo) : 'não definido'}`,
+    body: `<div class="calc"><div class="card metric"><div class="lab">Estoque-base</div><div class="val">${fmt(r.base)}</div></div><div class="card metric"><div class="lab">Entradas</div><div class="val">${sgn(r.entradas)}</div></div><div class="card metric"><div class="lab">Saídas</div><div class="val">${sgn(r.saidas)}</div></div><div class="card metric"><div class="lab">Ajustes</div><div class="val">${sgn(r.ajustes)}</div></div><div class="card metric hero"><div class="lab">Estoque atual</div><div class="val">${fmt(r.atual)}</div></div></div>
+    <p class="muted small">Base ${fmt(r.base)} + entradas ${fmt(r.entradas)} − saídas ${fmt(Math.abs(r.saidas))} ${r.ajustes < 0 ? '−' : '+'} ajustes ${fmt(Math.abs(r.ajustes))} = <b>${fmt(r.atual)}</b>. Abaixo, cada lançamento que levou a esse número, com o saldo acumulado.</p>${html}`,
+    foot: `<button class="btn" data-act="newEntry" data-pid="${pid}">+ Entrada</button><button class="btn" data-act="newAdjust" data-pid="${pid}">+ Ajuste</button>${p.arquivado ? '' : `<button class="btn" data-act="splitProduct" data-pid="${pid}">Dividir em modelos</button>`}<button class="btn" data-act="editProduct" data-pid="${pid}">Editar produto</button><button class="btn primary" data-act="closeModal">Fechar</button>` });
+}
+
+/* ---------------- AJUSTE MANUAL ---------------- */
+const MOTIVOS = ['Envio para evento', 'Envio para influenciadora / creator', 'Brinde / ação de marketing', 'Avaria / perda', 'Devolução', 'Recebimento de mercadoria', 'Correção de lançamento', 'Outro'];
+function openEntry(pid) {
+  const m = openModal({ title: 'Registrar entrada', sub: 'Mercadoria que chegou na logística. Soma na coluna Entradas.',
+    body: `<div class="field"><label for="enP">Produto</label><select class="input" id="enP">${sortedProducts().map(p => `<option value="${p.id}" ${p.id === pid ? 'selected' : ''}>${esc(pn(p))}</option>`).join('')}</select></div>
+    <div class="form2"><div class="field"><label for="enQ">Quantidade recebida</label><input class="input" id="enQ" type="number" min="1" step="1" inputmode="numeric" placeholder="500"></div>
+    <div class="field"><label for="enD">Data e hora do recebimento</label><input class="input" id="enD" type="datetime-local" value="${toLocalInput(C.nowNaive())}"></div></div>
+    <div class="form2"><div class="field"><label for="enN">Nota fiscal ou documento</label><input class="input" id="enN" placeholder="Ex.: NF 1234"><span class="hint">Se essa entrada também aparecer na planilha do Bling, use o mesmo número para não contar duas vezes.</span></div>
+    <div class="field"><label for="enO">Fornecedor / observação</label><input class="input" id="enO" placeholder="Ex.: reposição gráfica"></div></div>
+    <div id="enPrev" class="notice" style="margin:0"></div>`,
+    foot: `<button class="btn" data-act="closeModal">Cancelar</button><button class="btn primary" id="enGo">Registrar entrada</button>` });
+  const prev = () => {
+    const p = m.querySelector('#enP').value, q = parseInt(m.querySelector('#enQ').value, 10) || 0, d = fromLocalInput(m.querySelector('#enD').value);
+    const r = stockRows().find(x => x.p.id === p); const b = activeBase(); const el = m.querySelector('#enPrev');
+    if (d && d <= b.dataHora) { el.className = 'notice warn'; el.innerHTML = `<div>Essa data é anterior à contagem-base (${fdt(b.dataHora)}), então a contagem já inclui essa mercadoria. A entrada fica registrada, mas não altera o estoque atual.</div>`; }
+    else { el.className = 'notice'; el.innerHTML = `<div>${esc(prodName(p))}: <b>${fmt(r.atual)}</b> → <b>${fmt(r.atual + q)}</b></div>`; }
+  };
+  ['#enP', '#enQ', '#enD'].forEach(x => m.querySelector(x).addEventListener('input', prev)); prev();
+  m.querySelector('#enGo').onclick = async () => {
+    const p = m.querySelector('#enP').value, q = Number(m.querySelector('#enQ').value), d = fromLocalInput(m.querySelector('#enD').value);
+    if (!Number.isInteger(q) || q <= 0) return toast('Informe a quantidade recebida.', true);
+    if (!d) return toast('Informe a data do recebimento.', true);
+    const doc = m.querySelector('#enN').value.trim(), obs = m.querySelector('#enO').value.trim();
+    const key = doc ? ['P', C.norm(doc), p, 'ENTRADA', q].join('|') : null;
+    if (key && S.ledger.some(e => e.key === key)) return toast('Essa nota já foi lançada para este produto com essa quantidade.', true);
+    const id = nextId('M', 6);
+    const e = { id, seq: S.settings.seq.M, tipo: 'ENTRADA', cat: 'entradas', delta: q, productId: p, dataHora: d, ref: doc || 'sem documento', obs, key, looseKey: doc ? ['P', C.norm(doc), p, 'ENTRADA'].join('|') : null, origem: 'manual', criadoEm: C.nowNaive() };
+    await save({ ledger: [e], events: [mkEvent('entrada', `Entrada ${id}: ${prodName(p)} +${fmt(q)}${doc ? ' (' + doc + ')' : ''}${obs ? ' · ' + obs : ''}`)] });
+    closeModal(); toast(`Entrada registrada: ${prodName(p)} +${fmt(q)}`); render();
+  };
+}
+function openAdjust(pid) {
+  let sentido = 'SAIDA';
+  const m = openModal({ title: 'Novo ajuste manual', sub: 'O ajuste entra no ledger e fica registrado no histórico do produto.',
+    body: `<div class="field"><label for="ajP">Produto</label><select class="input" id="ajP">${sortedProducts().map(p => `<option value="${p.id}" ${p.id === pid ? 'selected' : ''}>${esc(pn(p))}${p.sku ? ' · ' + esc(p.sku) : ''}</option>`).join('')}</select></div>
+    <div class="form2"><div class="field"><label>Movimento</label><div class="seg" id="ajS"><button type="button" data-s="SAIDA" class="on">Saída</button><button type="button" data-s="ENTRADA">Entrada</button></div></div>
+    <div class="field"><label for="ajQ">Quantidade</label><input class="input" id="ajQ" type="number" min="1" step="1" inputmode="numeric" placeholder="10"></div></div>
+    <div class="form2"><div class="field"><label for="ajM">Motivo</label><select class="input" id="ajM">${MOTIVOS.map(x => `<option>${x}</option>`).join('')}</select></div>
+    <div class="field"><label for="ajD">Data e hora</label><input class="input" id="ajD" type="datetime-local" value="${toLocalInput(C.nowNaive())}"></div></div>
+    <div class="field"><label for="ajO">Observação</label><input class="input" id="ajO" placeholder="Ex.: evento X, creator Y"></div>
+    <div id="ajPrev" class="notice" style="margin:0"></div>`,
+    foot: `<button class="btn" data-act="closeModal">Cancelar</button><button class="btn primary" id="ajGo">Registrar ajuste</button>` });
+  const prev = () => {
+    const p = m.querySelector('#ajP').value, q = parseInt(m.querySelector('#ajQ').value, 10) || 0, d = fromLocalInput(m.querySelector('#ajD').value);
+    const r = stockRows().find(x => x.p.id === p); const b = activeBase();
+    const after = r.atual + (sentido === 'SAIDA' ? -q : q);
+    const el = m.querySelector('#ajPrev');
+    if (d && d <= b.dataHora) { el.className = 'notice warn'; el.innerHTML = `<div>Essa data é anterior à contagem-base ativa (${fdt(b.dataHora)}). O ajuste fica registrado no histórico, mas <b>não altera</b> o estoque atual, porque a contagem já reflete esse momento.</div>`; }
+    else { el.className = 'notice' + (after < 0 ? ' bad' : ''); el.innerHTML = `<div>${esc(prodName(p))}: <b>${fmt(r.atual)}</b> → <b>${fmt(after)}</b>${after < 0 ? ' · o estoque ficaria negativo' : ''}</div>`; }
+  };
+  m.querySelector('#ajS').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; sentido = b.dataset.s; m.querySelectorAll('#ajS button').forEach(x => x.classList.toggle('on', x === b)); prev(); };
+  ['#ajP', '#ajQ', '#ajD'].forEach(s => m.querySelector(s).addEventListener('input', prev)); prev();
+  m.querySelector('#ajGo').onclick = async () => {
+    const p = m.querySelector('#ajP').value, qv = m.querySelector('#ajQ').value, d = fromLocalInput(m.querySelector('#ajD').value);
+    const q = Number(qv);
+    if (!Number.isInteger(q) || q <= 0) return toast('Informe uma quantidade inteira maior que zero.', true);
+    if (!d) return toast('Informe data e hora.', true);
+    const motivo = m.querySelector('#ajM').value, obs = m.querySelector('#ajO').value.trim();
+    if (motivo === 'Outro' && !obs) return toast('Explique o motivo na observação.', true);
+    const id = nextId('M', 6);
+    const e = { id, seq: S.settings.seq.M, tipo: 'AJUSTE', cat: 'ajustes', delta: sentido === 'SAIDA' ? -q : q, sentido, productId: p, dataHora: d, motivo, obs, origem: 'manual', criadoEm: C.nowNaive() };
+    await save({ ledger: [e], events: [mkEvent('ajuste', `Ajuste ${id}: ${prodName(p)} ${sgn(e.delta)} (${motivo}${obs ? ' · ' + obs : ''})`)] });
+    closeModal(); toast(`Ajuste registrado: ${prodName(p)} ${sgn(e.delta)}`); render();
+  };
+}
+
+/* ---------------- IMPORTAR ---------------- */
+let IMP = null;
+function resetImport() { IMP = { step: 1, file: null, sheets: null, sheet: null, header: [], data: [], mapping: {}, defaultTipo: 'SAIDA', overrides: {}, items: null }; }
+resetImport();
+
+VIEWS.importar = () => {
+  const st = IMP.step;
+  const steps = `<div class="steps">${['Arquivo', 'Mapear colunas', 'Pré-visualizar', 'Concluído'].map((s, i) => `<div class="step ${st === i + 1 ? 'on' : st > i + 1 ? 'done' : ''}"><i>${st > i + 1 ? '✓' : i + 1}</i>${s}</div>`).join('')}</div>`;
+  const head = `<div class="page-head"><div><h1>Importar movimentações do Bling</h1><p>Suba a exportação de pedidos, saídas ou entradas. Nada é lançado antes da sua confirmação, e pedidos que já entraram não são descontados de novo.</p></div>${st > 1 ? `<div class="actions"><button class="btn" data-act="importRestart">Começar de novo</button></div>` : ''}</div>${baseStrip()}${steps}`;
+  if (st === 1) return head + `
+    <label class="drop" id="drop" for="fileInput"><h3>Arraste o arquivo do Bling aqui</h3><p class="muted">ou clique para escolher · CSV ou XLSX</p></label>
+    <div class="notice" style="margin-top:14px"><div class="grow small"><b>Para testar agora:</b> gere as planilhas do teste obrigatório (Limão 260 → 225 → 210). Os pedidos usam o nome do produto, então funcionam sem SKU cadastrado.</div><div class="actions"><button class="btn sm" data-act="sample" data-n="1">Planilha 1 (CSV)</button><button class="btn sm" data-act="sample" data-n="2">Planilha 2 (XLSX)</button></div></div>`;
+  if (st === 2) return head + mappingView();
+  if (st === 3) return head + previewView();
+  if (st === 4) return head + doneView();
+};
+AFTER.importar = () => {
+  const drop = document.getElementById('drop');
+  if (drop) {
+    drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+    drop.ondragleave = () => drop.classList.remove('over');
+    drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) handleFile(f); };
+  }
+  if (IMP.step === 2) bindMapping();
+  if (IMP.step === 3) bindPreview();
+};
+document.getElementById('fileInput').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) handleFile(f); });
+
+async function handleFile(f) {
+  try {
+    const { sheets } = await readSpreadsheet(f);
+    resetImport(); IMP.file = { name: f.name, size: f.size }; IMP.sheets = sheets;
+    selectSheet(Object.keys(sheets).find(n => sheets[n].length) || Object.keys(sheets)[0]);
+    if (!IMP.data.length) { toast('Não encontrei linhas com dados nesse arquivo.', true); resetImport(); return render(); }
+    IMP.step = 2; if (route !== 'importar') go('importar'); else render();
+  } catch (e) { toast('Não consegui ler o arquivo: ' + e.message, true); }
+}
+function selectSheet(n) {
+  IMP.sheet = n; const { header, data } = splitHeader(IMP.sheets[n] || []);
+  IMP.header = header; IMP.data = data;
+  const saved = S.settings.mappings[headerSig(header)];
+  if (saved) { IMP.mapping = {}; for (const [k, name] of Object.entries(saved.cols)) { const i = header.indexOf(name); if (i >= 0) IMP.mapping[k] = i; } IMP.defaultTipo = saved.defaultTipo || 'SAIDA'; IMP.fromSaved = true; }
+  else { IMP.mapping = guessMapping(header); IMP.fromSaved = false; }
+}
+function mappingView() {
+  const opt = (k) => `<option value="">— não usar —</option>` + IMP.header.map((h, i) => `<option value="${i}" ${IMP.mapping[k] === i ? 'selected' : ''}>${esc(h)}</option>`).join('');
+  const sheetNames = Object.keys(IMP.sheets);
+  const sample = IMP.data.slice(0, 4);
+  return `
+  <div class="panel">
+    <div class="panel-head"><div><b>${esc(IMP.file.name)}</b> <span class="muted">· ${fmt(IMP.data.length)} linhas com dados · ${IMP.header.length} colunas</span></div>
+    ${sheetNames.length > 1 ? `<div class="filters"><label class="small muted" for="sheetSel">Aba</label><select class="input" id="sheetSel">${sheetNames.map(n => `<option ${n === IMP.sheet ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>` : ''}</div>
+    ${IMP.fromSaved ? `<div class="notice ok" style="margin:14px 14px 0"><div>Reconheci o formato deste arquivo e apliquei o mapeamento usado da última vez.</div></div>` : ''}
+    <div class="mapgrid">${FIELDS.map(f => `<div class="field"><label for="map_${f.k}">${f.label} ${f.req === true ? '<span class="req">*</span>' : ''}</label><select class="input" id="map_${f.k}" data-map="${f.k}">${opt(f.k)}</select>${f.hint ? `<span class="hint">${f.hint}</span>` : ''}</div>`).join('')}
+      <div class="field"><label>Quando não houver coluna de tipo, considerar como</label><div class="seg" id="defTipo"><button type="button" data-t="SAIDA" class="${IMP.defaultTipo === 'SAIDA' ? 'on' : ''}">Saída (pedidos)</button><button type="button" data-t="ENTRADA" class="${IMP.defaultTipo === 'ENTRADA' ? 'on' : ''}">Entrada</button></div><span class="hint">Quantidades negativas são lidas como saída.</span></div>
+    </div>
+    <div style="padding:0 14px 14px" class="muted small">Obrigatório: Data, Quantidade, Nº do pedido <i>ou</i> ID único, e SKU <i>ou</i> Produto.</div>
+  </div>
+  <div class="section-title"><h2>Primeiras linhas do arquivo</h2></div>
+  <div class="panel tablewrap"><table><thead><tr><th>Linha</th>${IMP.header.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${sample.map(r => `<tr><td class="mono muted">${r.linha}</td>${IMP.header.map((h, i) => `<td>${esc(r.cells[i])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+  <div class="confirmbar"><div><h3>Mapeamento pronto?</h3><p class="muted small" id="mapMsg"></p></div><div class="actions"><button class="btn" data-act="importRestart">Cancelar</button><button class="btn primary" id="analisar">Analisar arquivo</button></div></div>`;
+}
+function mappingProblem() {
+  const m = IMP.mapping;
+  if (m.data == null) return 'Escolha a coluna de Data.';
+  if (m.quantidade == null) return 'Escolha a coluna de Quantidade.';
+  if (m.pedido == null && m.idUnico == null) return 'Escolha a coluna do Nº do pedido (ou do ID único).';
+  if (m.sku == null && m.produto == null) return 'Escolha a coluna de SKU ou de Produto.';
+  return '';
+}
+function bindMapping() {
+  const upd = () => { const p = mappingProblem(); document.getElementById('mapMsg').textContent = p || 'Vou classificar cada linha antes de qualquer lançamento.'; document.getElementById('analisar').disabled = !!p; };
+  document.querySelectorAll('[data-map]').forEach(s => s.onchange = () => { const v = s.value; if (v === '') delete IMP.mapping[s.dataset.map]; else IMP.mapping[s.dataset.map] = +v; upd(); });
+  document.getElementById('defTipo').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; IMP.defaultTipo = b.dataset.t; document.querySelectorAll('#defTipo button').forEach(x => x.classList.toggle('on', x === b)); };
+  const ss = document.getElementById('sheetSel'); if (ss) ss.onchange = () => { selectSheet(ss.value); render(); };
+  document.getElementById('analisar').onclick = () => { analyze(); IMP.step = 3; render(); };
+  upd();
+}
+function recordsFromData() {
+  const m = IMP.mapping;
+  return IMP.data.map(r => {
+    const rec = { _linha: r.linha, _original: Object.fromEntries(IMP.header.map((h, i) => [h, r.cells[i]])) };
+    for (const f of FIELDS) if (m[f.k] != null) rec[f.k] = r.cells[m[f.k]];
+    return rec;
+  });
+}
+function classifyCtx(extra) {
+  return Object.assign({ products: S.products, ledger: S.ledger, baseDataHora: activeBase().dataHora, defaultTipo: IMP.defaultTipo, overrides: IMP.overrides }, extra || {});
+}
+function analyze() { IMP.items = C.classifyRecords(recordsFromData(), classifyCtx()); }
+function importCounts(items) {
+  const c = { linhas: items.length, novas: 0, duplicadas: 0, anteriores: 0, erros: 0 };
+  for (const i of items) { if (i.status === 'nova') c.novas++; else if (i.status === 'duplicada') c.duplicadas++; else if (i.status === 'anterior') c.anteriores++; else c.erros++; }
+  return c;
+}
+let PV_FILTER = 'todas';
+function previewView() {
+  const items = IMP.items; const c = importCounts(items);
+  const unknown = {}; for (const i of items) if (i.codigo === 'produto_nao_encontrado') { const k = i.parsed.ident; unknown[k] = unknown[k] || { k, label: i.raw.sku || i.raw.produto, nome: i.raw.produto, n: 0 }; unknown[k].n++; }
+  const unk = Object.values(unknown);
+  const inFileDup = items.filter(i => i.repetidaNoArquivo).length;
+  const impact = {}; for (const i of items) if (i.status === 'nova') { const d = i.parsed.tipo === 'SAIDA' ? -i.parsed.qtd : i.parsed.qtd; impact[i.parsed.productId] = (impact[i.parsed.productId] || 0) + d; }
+  const stock = stockRows();
+  const filtered = items.filter(i => PV_FILTER === 'todas' || i.status === PV_FILTER);
+  const shown = filtered.slice(0, 300);
+  return `
+  <div class="panel" style="padding:14px 16px;margin-bottom:12px"><div class="muted small">Arquivo</div><div class="mono" style="font-size:.95rem;margin-top:2px">${esc(IMP.file.name)}</div></div>
+  <div class="summary-big">
+    <div class="card metric"><div class="lab">Linhas encontradas</div><div class="val">${fmt(c.linhas)}</div></div>
+    <div class="card metric" style="border-color:var(--ok)"><div class="lab">Movimentações novas</div><div class="val pos">${fmt(c.novas)}</div></div>
+    <div class="card metric"><div class="lab">Já processadas</div><div class="val">${fmt(c.duplicadas)}</div></div>
+    <div class="card metric"><div class="lab">Anteriores à base</div><div class="val">${fmt(c.anteriores)}</div><div class="sub">até ${fdt(activeBase().dataHora)}</div></div>
+    <div class="card metric"><div class="lab">Com erro</div><div class="val ${c.erros ? 'neg' : ''}">${fmt(c.erros)}</div></div>
+  </div>
+  ${unk.length ? `<div class="section-title"><h2>Produtos não reconhecidos</h2><span class="muted small">Vincule cada um a um produto cadastrado. O vínculo fica salvo para as próximas importações.</span></div>
+  <div class="panel tablewrap"><table><thead><tr><th>Como veio no arquivo</th><th class="num">Linhas</th><th>Vincular a</th></tr></thead><tbody>${unk.map(u => `<tr><td><span class="mono">${esc(u.label)}</span>${u.nome && u.nome !== u.label ? `<div class="muted small">${esc(u.nome)}</div>` : ''}</td><td class="num">${u.n}</td><td><select class="input" data-link="${esc(u.k)}"><option value="">Deixar como erro</option>${sortedProducts().map(p => `<option value="${p.id}" ${IMP.overrides[u.k] === p.id ? 'selected' : ''}>${esc(pn(p))}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>` : ''}
+  ${inFileDup ? `<div class="notice warn" style="margin-top:12px"><div><b>${inFileDup} linha(s) repetida(s) dentro do próprio arquivo</b> (mesmo pedido, produto e quantidade). Contei só uma vez. Se forem itens diferentes do mesmo pedido, mapeie uma coluna de ID único por linha.</div></div>` : ''}
+  ${Object.keys(impact).length ? `<div class="section-title"><h2>Impacto no estoque</h2></div><div class="panel tablewrap"><table><thead><tr><th>Produto</th><th class="num">Hoje</th><th class="num">Movimento</th><th class="num">Depois</th></tr></thead><tbody>${Object.entries(impact).map(([pid, d]) => { const r = stock.find(x => x.p.id === pid); return `<tr><td class="prod">${esc(prodName(pid))}</td><td class="num">${fmt(r.atual)}</td><td class="num ${dcls(d)}">${sgn(d)}</td><td class="num strong ${r.atual + d < 0 ? 'delta-neg' : ''}">${fmt(r.atual + d)}</td></tr>`; }).join('')}</tbody></table></div>` : ''}
+  <div class="section-title"><h2>Linhas analisadas</h2><div class="chips" id="pvchips">${['todas', 'nova', 'duplicada', 'anterior', 'erro'].map(s => `<button class="chip ${PV_FILTER === s ? 'on' : ''}" data-pv="${s}">${s === 'todas' ? 'Todas' : ROW_LABEL[s]}</button>`).join('')}</div></div>
+  <div class="panel tablewrap"><table><thead><tr><th>Linha</th><th>Situação</th><th>Pedido</th><th>Data/hora</th><th>Produto</th><th>Tipo</th><th class="num">Qtd</th><th>Observação</th></tr></thead><tbody>
+  ${shown.map(i => `<tr><td class="mono muted">${i.linha}</td><td>${pill(i.status, ROW_LABEL[i.status])}</td><td class="mono">${esc(i.parsed.pedido || i.parsed.idUnico)}</td><td class="mono">${i.parsed.dataHora ? fdt(i.parsed.dataHora) : esc(i.raw.data)}</td><td>${i.parsed.productId ? esc(prodName(i.parsed.productId)) : `<span class="muted">${esc(i.raw.sku || i.raw.produto || '—')}</span>`}</td><td>${i.parsed.tipo ? TIPO_LABEL[i.parsed.tipo] : esc(i.raw.tipo)}</td><td class="num">${i.parsed.qtd != null ? fmt(i.parsed.qtd) : esc(i.raw.quantidade)}</td><td class="small ${i.status === 'erro' ? 'delta-neg' : 'muted'}">${esc(i.problema || '')}</td></tr>`).join('') || `<tr><td colspan="8" class="empty">Nenhuma linha nessa situação.</td></tr>`}
+  </tbody></table>${filtered.length > shown.length ? `<div class="empty small">Mostrando ${shown.length} de ${fmt(filtered.length)} linhas. Todas serão registradas no histórico da importação.</div>` : ''}</div>
+  <div class="confirmbar"><div><h3>${c.novas ? `Deseja processar ${fmt(c.novas)} nova${c.novas > 1 ? 's' : ''} movimenta${c.novas > 1 ? 'ções' : 'ção'}?` : 'Nenhuma movimentação nova para lançar.'}</h3><p class="muted small">${c.erros ? `${c.erros} linha(s) com erro vão para "Com erro" para você corrigir depois. ` : ''}Linhas já processadas e anteriores à base não alteram o estoque.</p></div>
+  <div class="actions"><button class="btn" data-act="importRestart">Cancelar</button><button class="btn primary" id="processar" ${!c.novas && !c.erros ? 'disabled' : ''}>${c.novas ? 'Processar movimentações' : 'Registrar erros para correção'}</button></div></div>`;
+}
+function bindPreview() {
+  document.getElementById('pvchips').onclick = e => { const b = e.target.closest('[data-pv]'); if (!b) return; PV_FILTER = b.dataset.pv; render(); };
+  document.querySelectorAll('[data-link]').forEach(s => s.onchange = () => { if (s.value) IMP.overrides[s.dataset.link] = s.value; else delete IMP.overrides[s.dataset.link]; analyze(); render(); });
+  document.getElementById('processar').onclick = processImport;
+}
+async function processImport() {
+  const btn = document.getElementById('processar'); btn.disabled = true;
+  analyze(); // reclassifica contra o ledger atual, por segurança
+  const items = IMP.items; const c = importCounts(items);
+  const importId = nextId('I', 4); const now = C.nowNaive();
+  const entries = C.buildEntries(items, { seqStart: S.settings.seq.M, importId, criadoEm: now, origem: 'bling' });
+  S.settings.seq.M += entries.length;
+  const errs = items.filter(i => i.status === 'erro').map(i => ({ id: nextId('E', 5), importId, linha: i.linha, original: i.original, raw: stripPrivate(i.raw), codigo: i.codigo, problema: i.problema, solucao: i.solucao, parsed: i.parsed, status: 'pendente', criadoEm: now, defaultTipo: IMP.defaultTipo }));
+  // vínculos escolhidos viram aliases permanentes
+  const prodChanges = [];
+  for (const [k, pid] of Object.entries(IMP.overrides)) {
+    const p = prodById(pid); const val = k.replace(/^(sku|nome):/, '');
+    const original = items.find(i => i.parsed.ident === k); const raw = original ? (k.startsWith('sku:') ? original.raw.sku : original.raw.produto) : val;
+    if (!(p.vinculos || []).some(v => C.norm(v) === C.norm(raw))) { const np = clone(p); np.vinculos = [...(np.vinculos || []), String(raw).trim()]; prodChanges.push(np); }
+  }
+  const sig = headerSig(IMP.header);
+  S.settings.mappings[sig] = { cols: Object.fromEntries(Object.entries(IMP.mapping).map(([k, i]) => [k, IMP.header[i]])), defaultTipo: IMP.defaultTipo };
+  const imp = Object.assign({ id: importId, arquivo: IMP.file.name, aba: IMP.sheet, criadoEm: now, baseCountId: activeBase().id, mapping: S.settings.mappings[sig].cols, defaultTipo: IMP.defaultTipo, status: c.erros ? 'Concluída com erros' : 'Concluída',
+    itens: items.map(i => ({ linha: i.linha, status: i.status, pedido: i.parsed.pedido || i.parsed.idUnico, dataHora: i.parsed.dataHora || null, productId: i.parsed.productId || null, tipo: i.parsed.tipo || null, qtd: i.parsed.qtd ?? null, problema: i.problema || null, raw: i.raw.sku || i.raw.produto || '' })) }, c);
+  const ev = [mkEvent('importacao', `Importação ${importId} (${IMP.file.name}): ${c.novas} novas, ${c.duplicadas} já processadas, ${c.anteriores} anteriores à base, ${c.erros} com erro.`)];
+  if (prodChanges.length) ev.push(mkEvent('produto', `Vínculos do Bling salvos: ${prodChanges.map(p => p.nome + ' ← ' + p.vinculos[p.vinculos.length - 1]).join('; ')}`));
+  await save({ ledger: entries, imports: [imp], errors: errs, products: prodChanges, events: ev });
+  IMP.result = { importId, ...c }; IMP.step = 4; render();
+  toast(`${c.novas} movimentações lançadas no estoque.`);
+}
+const stripPrivate = r => Object.fromEntries(Object.entries(r).filter(([k]) => !k.startsWith('_')));
+function doneView() {
+  const r = IMP.result;
+  return `<div class="notice ok"><div class="grow"><b>Importação ${r.importId} concluída.</b> ${fmt(r.novas)} movimentações lançadas no ledger. ${fmt(r.duplicadas)} já processadas e ${fmt(r.anteriores)} anteriores à base foram ignoradas.${r.erros ? ` ${fmt(r.erros)} linha(s) com erro aguardam correção.` : ''}</div></div>
+  <div class="actions"><a class="btn primary" href="#painel">Ver estoque atualizado</a><button class="btn" data-act="openImport" data-id="${r.importId}">Detalhes da importação</button>${r.erros ? `<a class="btn" href="#erros">Corrigir erros</a>` : ''}<button class="btn" data-act="importRestart">Importar outro arquivo</button></div>`;
+}
+
+/* Planilhas de exemplo do teste obrigatório */
+async function sampleFile(n) {
+  const head = ['Número do pedido', 'Data', 'Produto', 'Quantidade', 'Situação'];
+  const rows1 = [['#001', '08/10/2026 10:00', 'Limão', 10, 'Atendido'], ['#002', '08/10/2026 13:00', 'Limão', 5, 'Atendido'], ['#003', '08/10/2026 15:00', 'Limão', 20, 'Atendido'], ['#004', '09/10/2026 10:00', 'Limão', 15, 'Atendido']];
+  const rows2 = [['#003', '08/10/2026 15:00', 'Limão', 20, 'Atendido'], ['#004', '09/10/2026 10:00', 'Limão', 15, 'Atendido'], ['#005', '10/10/2026 11:00', 'Limão', 10, 'Atendido'], ['#006', '10/10/2026 16:00', 'Limão', 5, 'Atendido']];
+  if (n === '1') return saveFile('teste_bling_upload1.csv', csvOf([head, ...rows1]));
+  try { return saveFile('teste_bling_upload2.xlsx', xlsxOf([['Pedidos', [head, ...rows2]]])); } catch (e) { toast(e.message, true); }
+}
+
+/* ---------------- LEDGER / MOVIMENTAÇÕES ---------------- */
+function filteredLedger() {
+  const f = UI.mv; const q = C.norm(f.q);
+  return [...S.ledger].filter(e => (!f.prod || e.productId === f.prod) && (!f.tipo || e.tipo === f.tipo) && (!f.de || e.dataHora >= f.de + 'T00:00:00') && (!f.ate || e.dataHora <= f.ate + 'T23:59:59')
+    && (!q || C.norm([e.ref, e.idUnico, e.id, e.motivo, e.obs, e.importId, prodName(e.productId)].join(' ')).includes(q)))
+    .sort((a, b) => a.dataHora < b.dataHora ? 1 : a.dataHora > b.dataHora ? -1 : b.seq - a.seq);
+}
+VIEWS.movimentacoes = () => {
+  const f = UI.mv;
+  return `<div class="page-head"><div><h1>Ledger de movimentações</h1><p>Todo lançamento que mexeu no estoque, na ordem em que aconteceu. Nada é apagado: um lançamento errado é corrigido com um estorno.</p></div>
+  <div class="actions"><button class="btn" data-act="newEntry">+ Registrar entrada</button><button class="btn" data-act="newAdjust">+ Novo ajuste</button><button class="btn" data-act="exportLedger" data-k="csv">Exportar CSV</button><button class="btn" data-act="exportLedger" data-k="xlsx">Exportar XLSX</button></div></div>
+  ${baseStrip()}
+  <div class="panel"><div class="panel-head"><div class="filters" id="mvf">
+    <input class="input search" data-f="q" placeholder="Pedido, motivo, ID…" value="${esc(f.q)}">
+    <select class="input" data-f="prod"><option value="">Todos os produtos</option>${sortedProducts().map(p => `<option value="${p.id}" ${f.prod === p.id ? 'selected' : ''}>${esc(pn(p))}</option>`).join('')}</select>
+    <select class="input" data-f="tipo"><option value="">Todos os tipos</option>${Object.entries(TIPO_LABEL).map(([k, l]) => `<option value="${k}" ${f.tipo === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <input class="input" type="date" data-f="de" value="${f.de}" aria-label="De"><input class="input" type="date" data-f="ate" value="${f.ate}" aria-label="Até">
+  </div></div><div class="tablewrap" id="mvtable">${ledgerTable()}</div></div>`;
+};
+function ledgerTable() {
+  const rows = filteredLedger(); const base = activeBase();
+  if (!rows.length) return `<div class="empty">${S.ledger.length ? 'Nenhum lançamento com esses filtros.' : 'Ainda não há lançamentos. Importe um arquivo do Bling ou registre um ajuste.'}</div>`;
+  const shown = rows.slice(0, 500);
+  return `<table><thead><tr><th>Data/hora</th><th>Lançamento</th><th>Produto</th><th>Tipo</th><th class="num">Qtd</th><th>Referência</th><th>Origem</th><th>Período</th><th></th></tr></thead><tbody>
+  ${shown.map(e => `<tr><td class="mono">${fdt(e.dataHora)}</td><td class="mono muted">${e.id}</td><td class="prod">${esc(prodName(e.productId))}</td><td>${pill(e.tipo === 'SAIDA' ? 'bad' : e.tipo === 'ENTRADA' ? 'ok' : e.tipo === 'ESTORNO' ? 'neutral' : 'info', TIPO_LABEL[e.tipo])}</td><td class="num strong ${dcls(e.delta)}">${sgn(e.delta)}</td>
+  <td>${e.tipo === 'AJUSTE' || e.tipo === 'DIVISAO' ? esc(e.motivo) + (e.obs ? `<div class="muted small">${esc(e.obs)}</div>` : '') : e.tipo === 'ESTORNO' ? `Estorno de ${e.estornoDe}<div class="muted small">${esc(e.motivo)}</div>` : `<span class="mono">${esc(e.ref || e.idUnico)}</span>`}</td>
+  <td class="small">${e.importId ? `<button class="btn ghost sm" data-act="openImport" data-id="${e.importId}">${e.importId}</button>` : e.erroId ? 'Correção ' + e.erroId : 'Manual'}</td>
+  <td>${e.dataHora > base.dataHora ? pill('accent', 'Base ' + countLabel(base)) : pill('neutral', 'Período anterior')}</td>
+  <td>${e.estornadoPor ? `<span class="muted small">estornado (${e.estornadoPor})</span>` : e.tipo !== 'ESTORNO' && e.tipo !== 'DIVISAO' ? `<button class="btn ghost sm" data-act="reverse" data-id="${e.id}">Estornar</button>` : ''}</td></tr>`).join('')}
+  </tbody></table>${rows.length > shown.length ? `<div class="empty small">Mostrando ${shown.length} de ${fmt(rows.length)}. Use os filtros ou exporte para ver tudo.</div>` : ''}`;
+}
+AFTER.movimentacoes = () => {
+  document.querySelectorAll('#mvf [data-f]').forEach(el => el.addEventListener(el.tagName === 'INPUT' && el.type !== 'date' ? 'input' : 'change', () => { UI.mv[el.dataset.f] = el.value; document.getElementById('mvtable').innerHTML = ledgerTable(); }));
+};
+function ledgerExportRows(list) {
+  return [['Lançamento', 'Data/hora', 'Produto', 'SKU', 'Tipo', 'Quantidade', 'Pedido/ID', 'Motivo', 'Observação', 'Origem', 'Importação', 'Estorno de', 'Estornado por', 'Registrado em'],
+    ...list.map(e => [e.id, fdt(e.dataHora), prodPlain(e.productId), (prodById(e.productId) || {}).sku || '', TIPO_LABEL[e.tipo], e.delta, e.ref || e.idUnico || '', e.motivo || '', e.obs || '', e.origem, e.importId || '', e.estornoDe || '', e.estornadoPor || '', fdt(e.criadoEm)])];
+}
+function openReverse(id) {
+  const e = S.ledger.find(x => x.id === id);
+  const m = openModal({ title: `Estornar ${id}`, sub: `${esc(prodName(e.productId))} · ${sgn(e.delta)} · ${fdt(e.dataHora)}`,
+    body: `<p>O estorno cria um lançamento contrário (${sgn(-e.delta)}) na mesma data/hora do original. O original continua no ledger, marcado como estornado.</p><div class="field"><label for="rvM">Motivo do estorno</label><input class="input" id="rvM" placeholder="Ex.: pedido cancelado no Bling"></div>`,
+    foot: `<button class="btn" data-act="closeModal">Cancelar</button><button class="btn danger" id="rvGo">Estornar lançamento</button>` });
+  m.querySelector('#rvGo').onclick = async () => {
+    const motivo = m.querySelector('#rvM').value.trim(); if (!motivo) return toast('Informe o motivo do estorno.', true);
+    const rid = nextId('M', 6);
+    const rev = { id: rid, seq: S.settings.seq.M, tipo: 'ESTORNO', cat: e.cat, delta: -e.delta, productId: e.productId, dataHora: e.dataHora, motivo, estornoDe: e.id, origem: 'manual', criadoEm: C.nowNaive() };
+    const orig = Object.assign(clone(e), { estornadoPor: rid });
+    await save({ ledger: [orig, rev], events: [mkEvent('estorno', `Estorno ${rid} do lançamento ${e.id} (${prodName(e.productId)} ${sgn(-e.delta)}): ${motivo}`)] });
+    closeModal(); toast('Lançamento estornado.'); render();
+  };
+}
+
+/* ---------------- ERROS ---------------- */
+VIEWS.erros = () => {
+  const pend = pendingErrors(); const done = S.errors.filter(e => e.status !== 'pendente');
+  const card = e => `<div class="card errcard"><div class="top"><div><b>${esc(e.problema)}</b><div class="muted small">${e.id} · importação ${e.importId} · linha ${e.linha} do arquivo</div></div>${e.status === 'pendente' ? pill('erro', 'Pendente') : pill(e.status === 'resolvida' ? 'ok' : 'neutral', e.status === 'resolvida' ? 'Resolvida' : 'Descartada')}</div>
+    <div class="kv">${Object.entries(e.original || e.raw || {}).filter(([, v]) => String(v).trim() !== '').map(([k, v]) => `<span><b>${esc(k)}</b>${esc(v)}</span>`).join('')}</div>
+    ${e.status === 'pendente' ? `<div class="solution small">${esc(e.solucao)}</div><div class="actions"><button class="btn primary sm" data-act="fixError" data-id="${e.id}">Corrigir e reprocessar</button><button class="btn sm" data-act="discardError" data-id="${e.id}">Descartar</button></div>` : `<div class="muted small">${esc(e.resolucao || '')}</div>`}</div>`;
+  return `<div class="page-head"><div><h1>Movimentações com erro</h1><p>Linhas do Bling que não entraram no estoque porque algo impedia um lançamento seguro. Nada aqui foi descontado.</p></div></div>
+  ${pend.length ? `<div class="errlist">${pend.map(card).join('')}</div>` : `<div class="notice ok"><div>Nenhum erro pendente.</div></div>`}
+  ${done.length ? `<div class="section-title"><h2>Resolvidas e descartadas (${done.length})</h2><button class="btn ghost sm" data-act="toggleResolved">${UI.errShowResolved ? 'Ocultar' : 'Mostrar'}</button></div>${UI.errShowResolved ? `<div class="errlist">${done.map(card).join('')}</div>` : ''}` : ''}`;
+};
+function openFixError(id) {
+  const e = S.errors.find(x => x.id === id); const r = e.raw || {};
+  const P = e.parsed || {};
+  const m = openModal({ title: `Corrigir ${e.id}`, wide: true, sub: esc(e.problema),
+    body: `<div class="kv">${Object.entries(e.original || r).filter(([, v]) => String(v).trim() !== '').map(([k, v]) => `<span><b>${esc(k)}</b>${esc(v)}</span>`).join('')}</div>
+    <div class="form2"><div class="field"><label for="fxPed">Nº do pedido</label><input class="input" id="fxPed" value="${esc(r.pedido ?? '')}"></div>
+    <div class="field"><label for="fxD">Data e hora</label><input class="input" id="fxD" type="datetime-local" value="${P.dataHora ? toLocalInput(P.dataHora) : ''}"></div></div>
+    <div class="form2"><div class="field"><label for="fxP">Produto</label><select class="input" id="fxP"><option value="">Escolha…</option>${sortedProducts().map(p => `<option value="${p.id}" ${P.productId === p.id ? 'selected' : ''}>${esc(pn(p))}</option>`).join('')}</select>
+      ${r.sku || r.produto ? `<label class="small" style="font-weight:500;display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" id="fxLink" checked> Lembrar "${esc(r.sku || r.produto)}" como este produto</label>` : ''}</div>
+    <div class="form2"><div class="field"><label for="fxQ">Quantidade</label><input class="input" id="fxQ" type="number" min="1" step="1" value="${P.qtd ?? ''}"></div>
+    <div class="field"><label for="fxT">Tipo</label><select class="input" id="fxT"><option value="SAIDA" ${P.tipo !== 'ENTRADA' ? 'selected' : ''}>Saída</option><option value="ENTRADA" ${P.tipo === 'ENTRADA' ? 'selected' : ''}>Entrada</option></select></div></div></div>
+    <div id="fxRes" class="notice" style="margin:0"><div>Ajuste os campos e clique em Verificar.</div></div>`,
+    foot: `<button class="btn" data-act="closeModal">Cancelar</button><button class="btn" id="fxCheck">Verificar</button><button class="btn primary" id="fxGo" disabled>Reprocessar</button>` });
+  let last = null;
+  const build = force => ({ pedido: m.querySelector('#fxPed').value, data: fromLocalInput(m.querySelector('#fxD').value).replace('T', ' '), quantidade: m.querySelector('#fxQ').value, tipo: m.querySelector('#fxT').value === 'ENTRADA' ? 'entrada' : 'saida', _productId: m.querySelector('#fxP').value || null, idUnico: r.idUnico, sku: r.sku, produto: r.produto, _force: force });
+  const check = force => {
+    const rec = build(force);
+    if (!rec._productId) { m.querySelector('#fxRes').className = 'notice bad'; m.querySelector('#fxRes').innerHTML = '<div>Escolha o produto.</div>'; return null; }
+    const it = C.classifyRecords([rec], { products: S.products, ledger: S.ledger, baseDataHora: activeBase().dataHora, defaultTipo: 'SAIDA', overrides: {} })[0];
+    const el = m.querySelector('#fxRes'); const go = m.querySelector('#fxGo');
+    go.disabled = true; go.textContent = 'Reprocessar';
+    if (it.status === 'nova') { el.className = 'notice ok'; el.innerHTML = `<div>Pronto para lançar: ${esc(prodName(it.parsed.productId))} ${sgn(it.parsed.tipo === 'SAIDA' ? -it.parsed.qtd : it.parsed.qtd)} em ${fdt(it.parsed.dataHora)}.</div>`; go.disabled = false; }
+    else if (it.status === 'erro' && it.codigo === 'qtd_divergente') { el.className = 'notice warn'; el.innerHTML = `<div class="grow">${esc(it.problema)}<br><span class="small">${esc(it.solucao)}</span></div><button class="btn sm" id="fxForce">Processar mesmo assim</button>`; m.querySelector('#fxForce').onclick = () => check(true); }
+    else if (it.status === 'erro') { el.className = 'notice bad'; el.innerHTML = `<div>${esc(it.problema)}</div>`; }
+    else { el.className = 'notice warn'; el.innerHTML = `<div>${it.status === 'duplicada' ? 'Essa movimentação já está no ledger' : 'A data é anterior ou igual à contagem-base: já está contemplada na contagem'}. Não há o que lançar. Você pode marcar o erro como resolvido sem lançar.</div>`; go.disabled = false; go.textContent = 'Resolver sem lançar'; }
+    last = it; return it;
+  };
+  m.querySelector('#fxCheck').onclick = () => check(false);
+  m.querySelector('#fxGo').onclick = async () => {
+    if (!last) return;
+    const now = C.nowNaive(); const upd = clone(e); const changes = { errors: [upd], events: [] };
+    if (last.status === 'nova') {
+      const ent = C.buildEntries([last], { seqStart: S.settings.seq.M, importId: null, erroId: e.id, criadoEm: now, origem: 'correcao' })[0];
+      S.settings.seq.M += 1; ent.importIdOrigem = e.importId; changes.ledger = [ent];
+      upd.status = 'resolvida'; upd.resolucao = `Corrigido e lançado como ${ent.id} em ${fdt(now)} (${prodName(ent.productId)} ${sgn(ent.delta)}).`;
+      changes.events.push(mkEvent('correcao', `Erro ${e.id} corrigido e lançado como ${ent.id}: ${prodName(ent.productId)} ${sgn(ent.delta)}`));
+    } else {
+      upd.status = 'resolvida'; upd.resolucao = `Resolvido sem lançamento em ${fdt(now)}: ${last.status === 'duplicada' ? 'já estava no ledger' : 'anterior à contagem-base'}.`;
+      changes.events.push(mkEvent('correcao', `Erro ${e.id} resolvido sem lançamento (${last.status}).`));
+    }
+    const link = m.querySelector('#fxLink');
+    if (link && link.checked && last.parsed.productId && (r.sku || r.produto)) {
+      const p = clone(prodById(last.parsed.productId)); const v = String(r.sku || r.produto).trim();
+      if (!(p.vinculos || []).some(x => C.norm(x) === C.norm(v))) { p.vinculos = [...(p.vinculos || []), v]; changes.products = [p]; }
+    }
+    await save(changes); closeModal(); toast('Erro resolvido.'); render();
+  };
+  if (P.productId || P.dataHora) check(false);
+}
+function openDiscard(id) {
+  const m = openModal({ title: `Descartar ${id}`, body: `<p>A linha não entra no estoque e fica registrada como descartada, com o motivo.</p><div class="field"><label for="dsM">Motivo</label><input class="input" id="dsM" placeholder="Ex.: pedido de teste, cancelado"></div>`,
+    foot: `<button class="btn" data-act="closeModal">Cancelar</button><button class="btn danger" id="dsGo">Descartar linha</button>` });
+  m.querySelector('#dsGo').onclick = async () => {
+    const mot = m.querySelector('#dsM').value.trim(); if (!mot) return toast('Informe o motivo.', true);
+    const e = clone(S.errors.find(x => x.id === id)); e.status = 'descartada'; e.resolucao = `Descartada em ${fdt(C.nowNaive())}: ${mot}`;
+    await save({ errors: [e], events: [mkEvent('correcao', `Erro ${id} descartado: ${mot}`)] }); closeModal(); render();
+  };
+}
+
+/* ---------------- CONTAGENS E CONCILIAÇÃO ---------------- */
+function conciliationRows(count) {
+  if (count.conciliacao) return count.conciliacao.rows;
+  const base = C.baseFor(S.counts, count.dataHora);
+  if (!base) return null;
+  return sortedProducts().map(p => {
+    const nosso = C.estimateAt(p.id, base, S.ledger, count.dataHora);
+    const fis = +(count.itens[p.id] ?? 0); const diff = fis - nosso;
+    return { productId: p.id, nosso, fisico: fis, diff, pct: nosso ? diff / nosso * 100 : (fis ? 100 : 0) };
+  });
+}
+function concSummary(rows) {
+  const div = rows.filter(r => r.diff !== 0);
+  const nosso = rows.reduce((a, r) => a + r.nosso, 0);
+  const abs = rows.reduce((a, r) => a + Math.abs(r.diff), 0);
+  return { skus: div.length, abs, liq: rows.reduce((a, r) => a + r.diff, 0), pct: nosso ? abs / nosso * 100 : 0, nosso, fisico: rows.reduce((a, r) => a + r.fisico, 0) };
+}
+const pctFmt = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+
+VIEWS.contagens = () => {
+  if (UI.countView) return conciliationView(S.counts.find(c => c.id === UI.countView));
+  const list = [...S.counts].sort((a, b) => a.dataHora < b.dataHora ? 1 : -1); const act = activeBase();
+  return `<div class="page-head"><div><h1>Contagens da logística</h1><p>Cada contagem física fica guardada. Uma nova contagem é comparada com o nosso estoque estimado no mesmo instante e, depois da conciliação, pode virar o novo ponto de partida.</p></div><div class="actions"><button class="btn primary" data-act="newCount">+ Registrar nova contagem</button></div></div>
+  ${baseStrip()}
+  <div class="panel tablewrap"><table><thead><tr><th>Contagem</th><th>Data/hora</th><th>Origem</th><th class="num">Unidades contadas</th><th>Situação</th><th>Divergência</th><th></th></tr></thead><tbody>
+  ${list.map(c => { const tot = Object.values(c.itens).reduce((a, x) => a + +x, 0); const rows = c.numero > 1 ? conciliationRows(c) : null; const sm = rows ? concSummary(rows) : null;
+    return `<tr class="click" data-count="${c.id}"><td class="mono strong">${countLabel(c)}</td><td class="mono">${fdt(c.dataHora)}</td><td class="small">${esc(c.origem || '')}</td><td class="num">${fmt(tot)}</td>
+    <td>${c.id === act.id ? pill('accent', 'Base ativa') : c.ehBase ? pill('neutral', 'Base anterior') : c.dataHora <= act.dataHora ? pill('neutral', 'Registrada (anterior à base)') : pill('warn', 'Aguardando decisão')}</td>
+    <td class="small">${sm ? (sm.skus ? `${sm.skus} SKU(s) · ${fmt(sm.abs)} un.` : 'Sem divergência') : '<span class="muted">contagem inicial</span>'}</td><td><span class="btn ghost sm">${c.numero > 1 ? 'Conciliação' : 'Ver'}</span></td></tr>`; }).join('')}
+  </tbody></table></div>`;
+};
+function conciliationView(c) {
+  const act = activeBase();
+  if (c.numero === 1 || !C.baseFor(S.counts, c.dataHora)) {
+    return `<div class="page-head"><div><h1>Contagem ${countLabel(c)}</h1><p>${fdt(c.dataHora)} · ${esc(c.origem || '')}</p></div><div class="actions"><button class="btn" data-act="backCounts">← Contagens</button></div></div>
+    ${c.obs ? `<div class="notice"><div>${esc(c.obs)}</div></div>` : ''}
+    <div class="panel tablewrap"><table><thead><tr><th>Produto</th><th class="num">Quantidade contada</th></tr></thead><tbody>${sortedProducts().map(p => `<tr><td class="prod">${esc(pn(p))}</td><td class="num">${fmt(c.itens[p.id] ?? 0)}</td></tr>`).join('')}</tbody><tfoot><tr><td>Total</td><td class="num">${fmt(Object.values(c.itens).reduce((a, x) => a + +x, 0))}</td></tr></tfoot></table></div>`;
+  }
+  const rows = conciliationRows(c); const sm = concSummary(rows);
+  const base = c.conciliacao ? S.counts.find(x => x.id === c.conciliacao.baseId) : C.baseFor(S.counts, c.dataHora);
+  const canBase = !c.ehBase && c.dataHora > act.dataHora;
+  return `<div class="page-head"><div><h1>Conciliação ${countLabel(c)}</h1><p>Estoque estimado pelo sistema em ${fdt(c.dataHora)} (base ${countLabel(base)} + movimentações até esse instante) comparado com a contagem física da logística.</p></div>
+  <div class="actions"><button class="btn" data-act="backCounts">← Contagens</button><button class="btn" data-act="exportConc" data-id="${c.id}" data-k="csv">CSV</button><button class="btn" data-act="exportConc" data-id="${c.id}" data-k="xlsx">XLSX</button></div></div>
+  ${c.conciliacao ? `<div class="notice ok"><div>Conciliação registrada em ${fdt(c.conciliacao.registradaEm)}. Esta contagem virou estoque-base nessa data; os números abaixo estão congelados.</div></div>` : `<div class="notice"><div>Os números do estimado são recalculados com o ledger atual até você definir esta contagem como base. Se ainda faltam pedidos do Bling até ${fdt(c.dataHora)}, importe-os antes de decidir.</div></div>`}
+  <div class="grid-cards">
+    <div class="card metric"><div class="lab">Nosso estoque</div><div class="val">${fmt(sm.nosso)}</div><div class="sub">estimado</div></div>
+    <div class="card metric"><div class="lab">Logística</div><div class="val">${fmt(sm.fisico)}</div><div class="sub">contado</div></div>
+    <div class="card metric"><div class="lab">SKUs divergentes</div><div class="val ${sm.skus ? 'neg' : 'pos'}">${sm.skus} <span class="small muted">de ${rows.length}</span></div></div>
+    <div class="card metric"><div class="lab">Unidades divergentes</div><div class="val">${fmt(sm.abs)}</div><div class="sub">saldo líquido ${sgn(sm.liq)}</div></div>
+    <div class="card metric"><div class="lab">Divergência</div><div class="val">${Math.abs(sm.pct).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%</div><div class="sub">do estoque estimado</div></div>
+  </div>
+  <div class="panel tablewrap"><table><thead><tr><th>SKU</th><th>Produto</th><th class="num">Nosso estoque</th><th class="num">Logística</th><th class="num">Diferença</th><th class="num">%</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(r => { const p = prodById(r.productId) || { nome: r.productId }; return `<tr class="click" data-audit="${r.productId}"><td class="mono">${p.sku ? esc(p.sku) : '<span class="muted">—</span>'}</td><td class="prod">${esc(pn(p))}</td><td class="num">${fmt(r.nosso)}</td><td class="num">${fmt(r.fisico)}</td><td class="num strong ${dcls(r.diff)}">${sgn(r.diff)}</td><td class="num ${dcls(r.diff)}">${r.diff ? pctFmt(r.pct) : '0%'}</td><td>${r.diff ? pill('warn', 'Divergente') : pill('ok', 'OK')}</td></tr>`; }).join('')}
+  </tbody></table></div>
+  ${canBase ? `<div class="confirmbar"><div><h3>Definir esta contagem como novo estoque-base</h3><p class="muted small">A contagem ${countLabel(c)} passa a ser o ponto de partida. A base ${countLabel(act)}, as movimentações, os ajustes e esta divergência continuam no histórico.</p></div><button class="btn primary" data-act="setBase" data-id="${c.id}">Definir como novo estoque-base</button></div>` : ''}
+  ${!c.ehBase && !canBase ? `<div class="notice warn" style="margin-top:14px"><div>Esta contagem é anterior à base ativa (${countLabel(act)}), então não pode virar base. Ela fica registrada como referência.</div></div>` : ''}`;
+}
+function openNewCount() {
+  const act = activeBase(); const num = (S.settings.seq.C || 1) + 1;
+  const prods = sortedProducts();
+  const m = openModal({ title: `Registrar contagem #${String(num).padStart(3, '0')}`, wide: true, sub: 'Informe exatamente o que a logística contou e o horário de referência da contagem.',
+    body: `<div class="form2"><div class="field"><label for="ncD">Data e hora de referência</label><input class="input" id="ncD" type="datetime-local" value="${toLocalInput(C.nowNaive())}"><span class="hint">Tudo até esse horário será considerado contemplado na contagem.</span></div>
+    <div class="field"><label for="ncO">Origem / observação</label><input class="input" id="ncO" placeholder="Ex.: mensagem da logística no WhatsApp"></div></div>
+    <details><summary class="small" style="cursor:pointer;font-weight:600">Colar a mensagem da logística e preencher automaticamente</summary><div class="stack" style="margin-top:10px"><textarea class="input" id="ncTxt" rows="6" placeholder="Limão 260&#10;Maracujá 73&#10;Copinhos de papel 10.000"></textarea><div class="actions"><button class="btn sm" id="ncParse">Preencher a partir da mensagem</button></div><div id="ncParseRes" class="small muted"></div></div></details>
+    <div class="tablewrap"><table><thead><tr><th>Produto</th><th class="num">Última base</th><th class="num">Contado agora</th></tr></thead><tbody>${prods.map(p => `<tr><td class="prod">${esc(pn(p))}</td><td class="num muted">${fmt(act.itens[p.id] ?? 0)}</td><td class="num"><input class="input num" style="width:120px" type="number" min="0" step="1" data-cq="${p.id}" id="cq_${p.id}" aria-label="${esc(pn(p))}"></td></tr>`).join('')}</tbody></table></div>
+    <div class="actions"><button class="btn sm" id="ncZero">Preencher vazios com 0</button></div>`,
+    foot: `<button class="btn" data-act="closeModal">Cancelar</button><button class="btn primary" id="ncGo">Salvar e conciliar</button>` });
+  m.querySelector('#ncParse').onclick = () => {
+    const r = C.parseLogisticsMessage(m.querySelector('#ncTxt').value, prods);
+    for (const [pid, q] of Object.entries(r.matched)) m.querySelector(`[data-cq="${pid}"]`).value = q;
+    m.querySelector('#ncParseRes').innerHTML = `${Object.keys(r.matched).length} produto(s) preenchido(s).${r.unmatched.length ? ` Não reconheci: ${r.unmatched.map(esc).join(' · ')}` : ''}`;
+  };
+  m.querySelector('#ncZero').onclick = () => m.querySelectorAll('[data-cq]').forEach(i => { if (i.value === '') i.value = 0; });
+  m.querySelector('#ncGo').onclick = async () => {
+    const d = fromLocalInput(m.querySelector('#ncD').value);
+    if (!d) return toast('Informe a data e hora da contagem.', true);
+    if (d <= act.dataHora) return toast(`A contagem precisa ser posterior à base ativa (${fdt(act.dataHora)}).`, true);
+    const itens = {}; let missing = [];
+    m.querySelectorAll('[data-cq]').forEach(i => { const v = i.value.trim(); if (v === '' || !Number.isInteger(+v) || +v < 0) missing.push(prodName(i.dataset.cq)); else itens[i.dataset.cq] = +v; });
+    if (missing.length) return toast(`Preencha com número inteiro: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}`, true);
+    S.settings.seq.C = num;
+    const c = { id: 'C' + String(num).padStart(3, '0'), numero: num, dataHora: d, origem: m.querySelector('#ncO').value.trim() || 'Logística', obs: '', itens, ehBase: false, registradaEm: C.nowNaive(), status: 'registrada' };
+    const sm = concSummary(conciliationRows(c));
+    c.divergenciaRegistro = Object.assign({ em: C.nowNaive() }, sm);
+    await save({ counts: [c], events: [mkEvent('contagem', `Contagem ${countLabel(c)} registrada (${fdt(d)}): ${fmt(sm.fisico)} un. contadas vs ${fmt(sm.nosso)} estimadas · ${sm.skus} SKU(s) divergentes, ${fmt(sm.abs)} un.`)] });
+    closeModal(); UI.countView = c.id; go('contagens'); render(); toast('Contagem registrada. Confira a conciliação.');
+  };
+}
+async function setBase(id) {
+  const c = S.counts.find(x => x.id === id); const act = activeBase();
+  const pendBefore = pendingErrors().filter(e => e.parsed && e.parsed.dataHora && e.parsed.dataHora <= c.dataHora).length;
+  const ok = await confirmBox({ title: `Definir ${countLabel(c)} como novo estoque-base?`, ok: 'Definir como base',
+    text: `A partir de agora, o estoque estimado parte da contagem de ${fdt(c.dataHora)}, e só entram movimentações posteriores a esse horário. A base ${countLabel(act)} e todo o histórico continuam guardados.${pendBefore ? `<br><br><b>Atenção:</b> existem ${pendBefore} erro(s) pendente(s) com data até esse horário. Depois da troca, eles passam a ser considerados anteriores à base.` : ''}` });
+  if (!ok) return;
+  const rows = conciliationRows(c); const sm = concSummary(rows);
+  const nc = clone(c); nc.ehBase = true; nc.status = 'base'; nc.baseDesde = C.nowNaive();
+  nc.conciliacao = { rows, resumo: sm, baseId: C.baseFor(S.counts, c.dataHora).id, registradaEm: C.nowNaive() };
+  const old = clone(act); old.status = 'base_anterior';
+  S.settings.baseCountId = nc.id;
+  await save({ counts: [nc, old], events: [mkEvent('base', `Contagem ${countLabel(nc)} definida como novo estoque-base (antes: ${countLabel(act)}). Divergência registrada: ${sm.skus} SKU(s), ${fmt(sm.abs)} un. (${sgn(sm.liq)} líquido).`)] });
+  toast(`${countLabel(nc)} agora é o estoque-base.`); render();
+}
+function concExport(id, kind) {
+  const c = S.counts.find(x => x.id === id); const rows = conciliationRows(c);
+  return exportTable(`conciliacao_${countLabel(c).slice(1)}`, [['SKU', 'Produto', 'Nosso estoque', 'Logística', 'Diferença', '%', 'Status'], ...rows.map(r => { const p = prodById(r.productId) || {}; return [p.sku || '', p.nome || r.productId, r.nosso, r.fisico, r.diff, r.diff ? +r.pct.toFixed(2) : 0, r.diff ? 'Divergente' : 'OK']; })], kind);
+}
+
+/* ---------------- IMPORTAÇÕES ---------------- */
+VIEWS.importacoes = () => {
+  const list = [...S.imports].sort((a, b) => a.criadoEm < b.criadoEm ? 1 : -1);
+  return `<div class="page-head"><div><h1>Histórico de importações</h1><p>Cada arquivo do Bling processado, com o que entrou, o que foi ignorado e por quê.</p></div><div class="actions"><button class="btn" data-act="exportImports" data-k="csv">Exportar CSV</button><button class="btn" data-act="exportImports" data-k="xlsx">Exportar XLSX</button><a class="btn primary" href="#importar">Nova importação</a></div></div>
+  <div class="panel tablewrap">${list.length ? `<table><thead><tr><th>ID</th><th>Data</th><th>Arquivo</th><th class="num">Linhas</th><th class="num">Novas</th><th class="num">Duplicadas</th><th class="num">Ignoradas</th><th class="num">Erros</th><th>Status</th></tr></thead><tbody>
+  ${list.map(i => `<tr class="click" data-imp="${i.id}"><td class="mono">${i.id}</td><td class="mono">${fdt(i.criadoEm)}</td><td>${esc(i.arquivo)}</td><td class="num">${fmt(i.linhas)}</td><td class="num delta-pos">${fmt(i.novas)}</td><td class="num">${fmt(i.duplicadas)}</td><td class="num">${fmt(i.anteriores)}</td><td class="num ${i.erros ? 'delta-neg' : ''}">${fmt(i.erros)}</td><td>${pill(i.erros ? 'warn' : 'ok', i.status)}</td></tr>`).join('')}</tbody></table>` : `<div class="empty">Nenhuma importação ainda. <a href="#importar">Importar o primeiro arquivo</a></div>`}</div>`;
+};
+function openImportDetail(id) {
+  const i = S.imports.find(x => x.id === id); if (!i) return;
+  let filt = 'todas';
+  const body = () => `<div class="grid-cards" style="margin:0"><div class="card metric"><div class="lab">Linhas</div><div class="val">${fmt(i.linhas)}</div></div><div class="card metric"><div class="lab">Novas</div><div class="val pos">${fmt(i.novas)}</div></div><div class="card metric"><div class="lab">Já processadas</div><div class="val">${fmt(i.duplicadas)}</div></div><div class="card metric"><div class="lab">Anteriores</div><div class="val">${fmt(i.anteriores)}</div></div><div class="card metric"><div class="lab">Erros</div><div class="val">${fmt(i.erros)}</div></div></div>
+    <p class="small muted">Base usada: ${i.baseCountId} · Mapeamento: ${Object.entries(i.mapping || {}).map(([k, v]) => `${esc(k)} ← "${esc(v)}"`).join(', ')}</p>
+    <div class="chips" id="idchips">${['todas', 'nova', 'duplicada', 'anterior', 'erro'].map(s => `<button class="chip ${filt === s ? 'on' : ''}" data-f="${s}">${s === 'todas' ? 'Todas' : ROW_LABEL[s]}</button>`).join('')}</div>
+    <div class="tablewrap"><table><thead><tr><th>Linha</th><th>Situação</th><th>Pedido</th><th>Data/hora</th><th>Produto</th><th class="num">Qtd</th><th>Observação</th></tr></thead><tbody>${i.itens.filter(x => filt === 'todas' || x.status === filt).slice(0, 500).map(x => `<tr><td class="mono muted">${x.linha}</td><td>${pill(x.status, ROW_LABEL[x.status])}</td><td class="mono">${esc(x.pedido)}</td><td class="mono">${fdt(x.dataHora)}</td><td>${x.productId ? esc(prodName(x.productId)) : `<span class="muted">${esc(x.raw)}</span>`}</td><td class="num">${x.qtd != null ? (x.tipo === 'ENTRADA' ? '+' : '−') + fmt(x.qtd) : '—'}</td><td class="small muted">${esc(x.problema || '')}</td></tr>`).join('')}</tbody></table></div>`;
+  const m = openModal({ title: `Importação ${i.id}`, sub: `${esc(i.arquivo)} · ${fdt(i.criadoEm)}`, wide: true, body: body(), foot: `<button class="btn" id="idExp">Exportar linhas (CSV)</button><button class="btn primary" data-act="closeModal">Fechar</button>` });
+  const bind = () => { m.querySelector('#idchips').onclick = e => { const b = e.target.closest('[data-f]'); if (!b) return; filt = b.dataset.f; m.querySelector('.modal-body').innerHTML = body(); bind(); }; };
+  bind();
+  m.querySelector('#idExp').onclick = () => exportTable(`importacao_${i.id}`, [['Linha', 'Situação', 'Pedido', 'Data/hora', 'Produto', 'Tipo', 'Quantidade', 'Observação'], ...i.itens.map(x => [x.linha, ROW_LABEL[x.status], x.pedido, fdt(x.dataHora), x.productId ? prodPlain(x.productId) : x.raw, x.tipo ? TIPO_LABEL[x.tipo] : '', x.qtd ?? '', x.problema || ''])], 'csv');
+}
+
+/* ---------------- PRODUTOS ---------------- */
+VIEWS.produtos = () => `<div class="page-head"><div><h1>Produtos</h1><p>Cadastre SKUs, mínimos e os nomes como aparecem no Bling (vínculos). O estoque mínimo define os status de alerta.</p></div><div class="actions"><button class="btn primary" data-act="newProduct">+ Novo produto</button></div></div>
+  <div class="panel tablewrap"><table><thead><tr><th>Produto</th><th>SKU</th><th>Categoria</th><th>Unid.</th><th class="num">Mínimo</th><th>Vínculos do Bling</th><th>Observação</th><th></th></tr></thead><tbody>
+  ${allProducts().map(p => `<tr><td class="prod">${esc(pn(p))}${p.arquivado ? ' ' + pill('neutral', 'Dividido em modelos') : ''}</td><td class="mono">${p.sku ? esc(p.sku) : '<span class="muted">—</span>'}</td><td>${esc(p.categoria || '')}</td><td>${esc(p.unidade || '')}</td><td class="num">${p.estoqueMinimo ? fmt(p.estoqueMinimo) : '<span class="muted">—</span>'}</td><td class="small">${(p.vinculos || []).map(v => `<code>${esc(v)}</code>`).join(' ') || '<span class="muted">—</span>'}</td><td class="small muted">${esc(p.observacao || '')}</td><td style="white-space:nowrap">${p.arquivado ? `<button class="btn ghost sm" data-audit="${p.id}">Histórico</button>` : `<button class="btn ghost sm" data-act="editProduct" data-pid="${p.id}">Editar</button>`}</td></tr>`).join('')}
+  </tbody></table></div>`;
+function openProduct(pid) {
+  const p = pid ? prodById(pid) : { nome: '', sku: '', categoria: '', unidade: 'un', estoqueMinimo: 0, observacao: '', vinculos: [] };
+  const m = openModal({ title: pid ? `Editar ${p.nome}` : 'Novo produto', sub: pid ? 'Alterações de cadastro ficam no registro de eventos.' : 'Produtos novos começam com estoque-base 0. Lance a quantidade inicial como ajuste de entrada.',
+    body: `<div class="form2"><div class="field"><label for="pfN">Nome</label><input class="input" id="pfN" value="${esc(p.nome)}"></div><div class="field"><label for="pfE">Emoji</label><input class="input" id="pfE" value="${esc(p.emoji || '')}" placeholder="🍋" style="width:90px"><span class="hint">Aparece ao lado do nome.</span></div></div>
+    <div class="form2"><div class="field"><label for="pfS">SKU</label><input class="input mono" id="pfS" value="${esc(p.sku)}" placeholder="Código no Bling"></div><div class="field"><label for="pfC">Categoria</label><input class="input" id="pfC" value="${esc(p.categoria)}" list="catlist"><datalist id="catlist">${[...new Set(S.products.map(x => x.categoria).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('')}</datalist></div></div>
+    <div class="form2"><div class="field"><label for="pfU">Unidade de medida</label><input class="input" id="pfU" value="${esc(p.unidade)}"></div><div class="field"><label for="pfM">Estoque mínimo</label><input class="input" id="pfM" type="number" min="0" step="1" value="${p.estoqueMinimo || ''}" placeholder="0 = sem mínimo"></div></div>
+    <div class="field"><label for="pfV">Vínculos do Bling</label><input class="input" id="pfV" value="${esc((p.vinculos || []).join('; '))}" placeholder="Outros SKUs ou nomes que o Bling usa, separados por ;"><span class="hint">Qualquer linha do Bling com um desses SKUs ou nomes é lançada neste produto.</span></div>
+    <div class="field"><label for="pfO">Observação</label><input class="input" id="pfO" value="${esc(p.observacao)}"></div>`,
+    foot: `${pid ? `<button class="btn" data-act="splitProduct" data-pid="${pid}" style="margin-right:auto">Dividir em modelos</button>` : ''}<button class="btn" data-act="closeModal">Cancelar</button><button class="btn primary" id="pfGo">Salvar</button>` });
+  m.querySelector('#pfGo').onclick = async () => {
+    const nome = m.querySelector('#pfN').value.trim(); if (!nome) return toast('Informe o nome.', true);
+    const sku = m.querySelector('#pfS').value.trim();
+    if (sku && S.products.some(x => x.id !== pid && C.norm(x.sku) === C.norm(sku))) return toast('Esse SKU já está em outro produto.', true);
+    const min = m.querySelector('#pfM').value === '' ? 0 : Number(m.querySelector('#pfM').value);
+    if (!Number.isInteger(min) || min < 0) return toast('Estoque mínimo precisa ser inteiro.', true);
+    const np = Object.assign(clone(p), { emoji: m.querySelector('#pfE').value.trim(), nome, sku, categoria: m.querySelector('#pfC').value.trim(), unidade: m.querySelector('#pfU').value.trim() || 'un', estoqueMinimo: min, observacao: m.querySelector('#pfO').value.trim(), vinculos: m.querySelector('#pfV').value.split(';').map(s => s.trim()).filter(Boolean) });
+    if (!pid) { np.id = nextId('P', 3); np.ordem = S.products.length + 1; np.criadoEm = C.nowNaive(); }
+    const diffs = pid ? ['emoji', 'nome', 'sku', 'categoria', 'unidade', 'estoqueMinimo', 'observacao'].filter(k => String(p[k] ?? '') !== String(np[k] ?? '')).map(k => `${k}: "${p[k] ?? ''}" → "${np[k]}"`) : [];
+    if (pid && JSON.stringify(p.vinculos || []) !== JSON.stringify(np.vinculos)) diffs.push(`vínculos: ${np.vinculos.join('; ') || '—'}`);
+    await save({ products: [np], events: [mkEvent('produto', pid ? `Produto ${np.nome} editado. ${diffs.join(' · ') || 'Sem mudanças.'}` : `Produto ${np.nome} cadastrado (estoque-base 0).`)] });
+    closeModal(); toast('Produto salvo.'); render();
+  };
+}
+
+
+/* ---------------- DIVIDIR PRODUTO EM MODELOS ---------------- */
+const SPLIT_SUGESTOES = { ecobag: ['Ecobag Blessy', 'Ecobag Greens Club', 'Bolsa Greens Club'] };
+function openSplit(pid) {
+  const p = prodById(pid); const base = activeBase();
+  const at = C.nowNaive() > base.dataHora ? base.dataHora.slice(0, 17) + '01' : base.dataHora;
+  const qtdBase = C.estimateAt(pid, base, S.ledger, at);
+  const atual = stockRows().find(r => r.p.id === pid).atual;
+  const later = S.ledger.filter(e => e.productId === pid && e.dataHora > at).length;
+  const nomes = SPLIT_SUGESTOES[C.norm(p.nome)] || ['', ''];
+  const rowHtml = (n, i) => `<div class="filters" data-row><input class="input" style="flex:1;min-width:0" data-nm placeholder="Nome do modelo" value="${esc(n)}" aria-label="Nome do modelo ${i + 1}"><input class="input num" style="width:110px" type="number" min="0" step="1" data-q placeholder="Qtd" aria-label="Quantidade do modelo ${i + 1}"></div>`;
+  const m = openModal({ title: `Dividir ${p.nome} em modelos`, sub: `Na contagem ${countLabel(base)} a logística informou <b>${fmt(qtdBase)}</b> un. de ${esc(pn(p))}. Preencha quantas são de cada modelo.`,
+    body: `<div class="stack" id="spRows">${nomes.map(rowHtml).join('')}</div>
+    <button class="btn sm" id="spAdd" style="align-self:flex-start">+ Outro modelo</button>
+    <div id="spRes" class="notice" style="margin:0"></div>
+    ${later ? `<div class="notice warn" style="margin:0"><div>${esc(pn(p))} já tem ${later} lançamento(s) depois da contagem. Eles continuam no produto antigo; confira depois se precisa de ajuste.</div></div>` : ''}
+    <p class="small muted">${esc(pn(p))} sai da tabela e cada modelo vira um produto, com o histórico ligado ao original. Os SKUs dos modelos podem ser cadastrados depois em Produtos.</p>`,
+    foot: `<button class="btn" data-act="closeModal">Cancelar</button><button class="btn primary" id="spGo">Dividir</button>` });
+  const rows = () => [...m.querySelectorAll('[data-row]')].map(r => ({ nome: r.querySelector('[data-nm]').value.trim(), q: r.querySelector('[data-q]').value.trim() })).filter(r => r.nome || r.q);
+  const upd = () => {
+    const tot = rows().reduce((a, r) => a + (+r.q || 0), 0); const el = m.querySelector('#spRes');
+    const falta = qtdBase - tot;
+    el.className = 'notice ' + (falta === 0 ? 'ok' : 'warn');
+    el.innerHTML = `<div>Soma dos modelos: <b>${fmt(tot)}</b> de ${fmt(qtdBase)}${falta === 0 ? ' · confere com a contagem' : falta > 0 ? ` · faltam ${fmt(falta)}` : ` · passou ${fmt(-falta)}`}</div>`;
+  };
+  m.querySelector('#spRows').addEventListener('input', upd); upd();
+  m.querySelector('#spAdd').onclick = () => { m.querySelector('#spRows').insertAdjacentHTML('beforeend', rowHtml('', m.querySelectorAll('[data-row]').length)); };
+  m.querySelector('#spGo').onclick = async () => {
+    const rs = rows();
+    if (rs.length < 2) return toast('Informe pelo menos dois modelos.', true);
+    if (rs.some(r => !r.nome)) return toast('Dê um nome para cada modelo.', true);
+    if (rs.some(r => r.q === '' || !Number.isInteger(+r.q) || +r.q < 0)) return toast('Preencha a quantidade de cada modelo (pode ser 0).', true);
+    if (new Set(rs.map(r => C.norm(r.nome))).size !== rs.length || rs.some(r => S.products.some(x => !x.arquivado && C.norm(x.nome) === C.norm(r.nome)))) return toast('Há nome de modelo repetido ou igual a um produto que já existe.', true);
+    const tot = rs.reduce((a, r) => a + +r.q, 0);
+    if (tot !== qtdBase) {
+      const ok = await confirmBox({ title: 'A soma não bate com a contagem', ok: 'Dividir mesmo assim', text: `Os modelos somam ${fmt(tot)}, mas a contagem tinha ${fmt(qtdBase)} de ${esc(pn(p))}. A diferença de ${sgn(tot - qtdBase)} fica registrada no histórico. Se preferir, confirme os números com a logística antes.` });
+      if (!ok) return;
+    }
+    await doSplit(p, rs, qtdBase, at, '');
+    closeModal(); toast(`${p.nome} dividido em ${rs.length} modelos.`); render();
+  };
+}
+async function doSplit(p, rs, qtdBase, at, fonte) {
+    const base = activeBase(); const tot = rs.reduce((a, r) => a + +r.q, 0);
+    const now = C.nowNaive(); const novos = []; const ents = [];
+    const mk = (prodId, delta, obs) => { const id = nextId('M', 6); ents.push({ id, seq: S.settings.seq.M, tipo: 'DIVISAO', cat: 'divisao', delta, productId: prodId, dataHora: at, motivo: 'Divisão em modelos', obs, origem: 'manual', criadoEm: now }); };
+    rs.forEach((r, i) => { const np = { id: nextId('P', 3), nome: r.nome, sku: '', categoria: p.categoria, unidade: p.unidade, estoqueMinimo: 0, observacao: `Modelo de ${p.nome}`, vinculos: [], emoji: EMOJI_PADRAO[C.norm(r.nome)] || p.emoji || '', ordem: (p.ordem || 0) + (i + 1) / 100, origemDe: p.id, criadoEm: now }; novos.push(np); });
+    mk(p.id, -qtdBase, `${p.nome} dividido em ${rs.map(r => r.nome).join(', ')}`);
+    rs.forEach((r, i) => mk(novos[i].id, +r.q, `veio de ${p.nome} (contagem ${countLabel(base)})`));
+    const old = Object.assign(clone(p), { arquivado: true, arquivadoEm: now, observacao: `Dividido em: ${rs.map(r => r.nome + ' ' + r.q).join(', ')}` });
+    await save({ products: [old, ...novos], ledger: ents, events: [mkEvent('produto', `${p.nome} (${fmt(qtdBase)} un.) dividido em modelos: ${rs.map(r => `${r.nome} ${fmt(+r.q)}`).join(', ')}${tot !== qtdBase ? ` · diferença ${sgn(tot - qtdBase)}` : ''}.${fonte ? ' ' + fonte : ''}`)] });
+}
+
+/* ---------------- BACKUP E AJUSTES ---------------- */
+let lastTest = null;
+VIEWS.config = () => {
+  const act = activeBase();
+  return `<div class="page-head"><div><h1>Backup e ajustes</h1><p>${SUPA_CFG ? 'Os dados ficam no Supabase, compartilhados com a equipe. Todo dia é guardada uma cópia automática na tabela estoque_backups. Você também pode baixar um backup quando quiser.' : Remote.available ? 'Os dados ficam no Google Drive, ao lado da planilha "Estoque Blessy". Todo dia é feita uma cópia automática na pasta "Backups do estoque".' : 'Os dados ficam salvos neste navegador (IndexedDB). Exporte um backup com frequência e guarde no Drive da empresa.'}</p></div></div>
+  <div class="two">
+    <div class="stack">
+      <div class="card stack"><h2>Backup</h2><p class="muted small">Contém produtos, SKUs, contagens, estoques-base, ledger, ajustes, erros, histórico de importações, eventos e configurações.</p>
+        <div class="actions"><button class="btn primary" data-act="exportBackup">${IS_GOOGLE ? 'Salvar backup agora' : 'Exportar backup'}</button><label class="btn" for="backupInput">Importar backup</label></div>
+        <p class="small muted">Último backup: ${S.settings.ultimoBackup ? fdt(S.settings.ultimoBackup) : 'nunca'}</p></div>
+      <div class="card stack"><h2>Exportar histórico</h2>
+        <div class="actions"><button class="btn sm" data-act="exportLedger" data-k="xlsx">Ledger (XLSX)</button><button class="btn sm" data-act="exportLedger" data-k="csv">Ledger (CSV)</button><button class="btn sm" data-act="exportStock" data-k="xlsx">Estoque atual (XLSX)</button><button class="btn sm" data-act="exportImports" data-k="xlsx">Importações (XLSX)</button><button class="btn sm" data-act="exportAll">Tudo em uma planilha</button></div></div>
+      <div class="card stack"><h2>Status de estoque</h2><p class="muted small">Baixo: estoque ≤ mínimo do produto. Crítico: estoque ≤ a porcentagem abaixo do mínimo. Zerado: 0 ou menos. O mínimo de cada produto é definido em Produtos.</p>
+        <div class="field"><label for="pctC">Crítico quando o estoque for até</label><div class="filters"><input class="input num" id="pctC" type="number" min="1" max="100" value="${S.settings.pctCritico}" style="width:90px"><span>% do mínimo</span><button class="btn sm" data-act="savePct">Salvar</button></div></div></div>
+    </div>
+    <div class="stack">
+      <div class="card stack"><h2>Teste obrigatório</h2><p class="muted small">Roda o cenário Limão 260 → 225 → 210 e a regra de data (#120 a #125) numa cópia isolada. Não altera seus dados.</p>
+        <div class="actions"><button class="btn primary" data-act="runTest">Executar teste</button></div>${lastTest ? testResult(lastTest) : ''}</div>
+      <div class="card stack"><h2>Contagem-base ativa</h2><p>${countLabel(act)} · ${fdt(act.dataHora)} · ${esc(act.origem || '')}</p><a class="btn sm" href="#contagens" style="align-self:flex-start">Ver contagens</a></div>
+    </div>
+  </div>
+  <div class="section-title"><h2>Registro de eventos</h2><span class="muted small">Tudo que mudou no sistema, em ordem.</span></div>
+  <div class="panel tablewrap"><table><thead><tr><th>Quando</th><th>Quem</th><th>Evento</th><th>Descrição</th></tr></thead><tbody>${[...S.events].sort((a, b) => a.id < b.id ? 1 : -1).slice(0, 200).map(e => `<tr><td class="mono">${fdt(e.em)}</td><td class="small">${esc(e.autor || '')}</td><td>${pill('neutral', e.tipo)}</td><td class="small">${esc(e.texto)}</td></tr>`).join('')}</tbody></table></div>
+  <div class="section-title"><h2>Recomeçar do zero</h2></div>
+  <div class="card stack"><p class="small muted">Apaga os dados deste navegador e volta para a Contagem #001. Exporte um backup antes. Para confirmar, digite APAGAR.</p><div class="filters"><input class="input" id="resetTxt" placeholder="APAGAR" style="width:140px"><button class="btn danger sm" data-act="resetAll">Restaurar dados iniciais</button></div></div>`;
+};
+function testResult(t) {
+  return `<div class="notice ${t.ok ? 'ok' : 'bad'}" style="margin:0"><div><b>${t.ok ? 'Teste aprovado.' : 'Teste reprovado.'}</b> Resultado final do Limão: <b>${t.final}</b> unidades.</div></div>
+  <div class="panel">${t.steps.map(s => `<div class="test-step"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(s.nome)}</b>${pill(s.ok ? 'ok' : 'bad', s.ok ? 'OK' : 'Falhou')}</div><div class="small">Esperado: <b>${esc(s.esperado)}</b> · Obtido: <b>${esc(s.obtido)}</b></div><div class="kv">${s.linhas.map(l => `<span><b>${esc(l.pedido)}</b>${fdt(l.data, true)} · ${l.qtd} un · ${ROW_LABEL[l.status]}</span>`).join('')}</div></div>`).join('')}</div>`;
+}
+async function exportBackup() {
+  const data = { app: 'blessy-espelho-estoque', versao: 1, exportadoEm: C.nowNaive(), products: S.products, counts: S.counts, ledger: S.ledger, imports: S.imports, errors: S.errors, events: S.events, settings: S.settings };
+  const ok = await saveFile(`backup_estoque_blessy_${C.nowNaive().slice(0, 16).replace(/[:T]/g, '-')}.json`, JSON.stringify(data, null, 1));
+  if (ok) { S.settings.ultimoBackup = C.nowNaive(); await save({ events: [mkEvent('backup', 'Backup exportado.')] }); render(); }
+}
+document.getElementById('backupInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  let d; try { d = JSON.parse(decodeText(await f.arrayBuffer())); } catch (err) { return toast('Arquivo inválido: não é um JSON de backup.', true); }
+  if (d.app !== 'blessy-espelho-estoque' || !Array.isArray(d.products) || !Array.isArray(d.counts) || !Array.isArray(d.ledger) || !d.settings) return toast('Esse arquivo não é um backup do Espelho de Estoque.', true);
+  const ok = await confirmBox({ title: 'Importar backup?', ok: 'Substituir pelos dados do backup', danger: true,
+    text: `Backup de <b>${fdt(d.exportadoEm)}</b>: ${d.products.length} produtos, ${d.counts.length} contagens, ${fmt(d.ledger.length)} lançamentos, ${d.imports.length} importações.<br><br>Os dados atuais deste navegador (${fmt(S.ledger.length)} lançamentos) serão substituídos. Se quiser guardá-los, exporte um backup antes.` });
+  if (!ok) return;
+  for (const k of ['products', 'counts', 'ledger', 'imports', 'errors', 'events']) S[k] = d[k] || [];
+  S.settings = d.settings;
+  S.events.push(mkEvent('backup', `Backup de ${fdt(d.exportadoEm)} importado (${fmt(d.ledger.length)} lançamentos).`));
+  try { await Repo.commit({ products: S.products, counts: S.counts, ledger: S.ledger, imports: S.imports, errors: S.errors, events: S.events, settings: [S.settings] }, true); await (Remote.running || Promise.resolve()); await load(); toast('Backup importado.'); }
+  catch (err) { toast('Falha ao gravar o backup: ' + err.message, true); }
+  render();
+});
+function stockExportRows() {
+  return [['SKU', 'Produto', 'Categoria', 'Estoque-base', 'Entradas', 'Saídas', 'Ajustes', 'Estoque atual', 'Mínimo', 'Status'], ...stockRows().map(r => [r.p.sku, r.p.nome, r.p.categoria, r.base, r.entradas, r.saidas, r.ajustes, r.atual, r.p.estoqueMinimo || '', STATUS_LABEL[r.status]])];
+}
+function importsExportRows() {
+  return [['ID', 'Data', 'Arquivo', 'Linhas', 'Novas', 'Duplicadas', 'Ignoradas', 'Erros', 'Status'], ...S.imports.map(i => [i.id, fdt(i.criadoEm), i.arquivo, i.linhas, i.novas, i.duplicadas, i.anteriores, i.erros, i.status])];
+}
+
+/* ---------------- Ações globais ---------------- */
+const ACTIONS = {
+  closeModal, newAdjust: el => openAdjust(el.dataset.pid), newEntry: el => openEntry(el.dataset.pid), editProduct: el => openProduct(el.dataset.pid), splitProduct: el => openSplit(el.dataset.pid), newProduct: () => openProduct(null),
+  importRestart: () => { resetImport(); PV_FILTER = 'todas'; go('importar'); render(); },
+  sample: el => sampleFile(el.dataset.n),
+  openImport: el => openImportDetail(el.dataset.id), reverse: el => openReverse(el.dataset.id),
+  fixError: el => openFixError(el.dataset.id), discardError: el => openDiscard(el.dataset.id),
+  toggleResolved: () => { UI.errShowResolved = !UI.errShowResolved; render(); },
+  newCount: openNewCount, backCounts: () => { UI.countView = null; render(); }, setBase: el => setBase(el.dataset.id),
+  exportConc: el => concExport(el.dataset.id, el.dataset.k),
+  exportLedger: el => exportTable('ledger_estoque', ledgerExportRows([...S.ledger].sort((a, b) => a.dataHora < b.dataHora ? -1 : 1)), el.dataset.k),
+  exportStock: el => exportTable('estoque_atual', stockExportRows(), el.dataset.k),
+  exportImports: el => exportTable('importacoes', importsExportRows(), el.dataset.k),
+  exportAll: () => { try { saveFile(`historico_estoque_${C.nowNaive().slice(0, 10)}.xlsx`, xlsxOf([['Estoque atual', stockExportRows()], ['Ledger', ledgerExportRows([...S.ledger].sort((a, b) => a.dataHora < b.dataHora ? -1 : 1))], ['Importações', importsExportRows()], ['Contagens', [['Contagem', 'Data/hora', 'Origem', 'Base', ...sortedProducts().map(p => p.nome)], ...S.counts.map(c => [countLabel(c), fdt(c.dataHora), c.origem, c.ehBase ? 'sim' : 'não', ...sortedProducts().map(p => c.itens[p.id] ?? '')])]], ['Eventos', [['Quando', 'Tipo', 'Descrição'], ...S.events.map(e => [fdt(e.em), e.tipo, e.texto])]]])); } catch (e) { toast(e.message, true); } },
+  copyTeamLink: async () => {
+    const link = teamLink();
+    try { await navigator.clipboard.writeText(link); toast('Link da equipe copiado. Mande só para quem pode mexer no estoque.'); }
+    catch (e) { openModal({ title: 'Link da equipe', sub: 'Mande só para quem pode mexer no estoque.', body: `<input class="input mono" id="tlk" readonly value="${esc(link)}">`, foot: `<button class="btn primary" data-act="closeModal">Fechar</button>`, onMount: m => setTimeout(() => m.querySelector('#tlk').select(), 50) }); }
+  },
+  exportBackup, retrySave: () => Remote.queue(), changeAuthor: async () => { await askAuthor(); renderFoot(); },
+  runTest: () => { lastTest = C.runSelfTest(); render(); },
+  savePct: async () => { const v = Number(document.getElementById('pctC').value); if (!Number.isInteger(v) || v < 1 || v > 100) return toast('Use um número entre 1 e 100.', true); S.settings.pctCritico = v; await save({ events: [mkEvent('config', `Limite de estoque crítico alterado para ${v}% do mínimo.`)] }); toast('Limite salvo.'); render(); },
+  resetAll: async () => {
+    if (document.getElementById('resetTxt').value.trim() !== 'APAGAR') return toast('Digite APAGAR para confirmar.', true);
+    const st = seedState(); Object.assign(S, st); S.events.push(mkEvent('sistema', 'Dados restaurados para a Contagem-base #001 (08/10/2026 14:00).'));
+    await Repo.commit({ products: S.products, counts: S.counts, ledger: [], imports: [], errors: [], events: S.events, settings: [S.settings] }, true);
+    await (Remote.running || Promise.resolve()); await load(); resetImport(); toast('Dados restaurados.'); go('painel'); render();
+  }
+};
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if (a) { e.preventDefault(); const f = ACTIONS[a.dataset.act]; if (f) f(a); return; }
+  const au = e.target.closest('[data-audit]'); if (au) { openAudit(au.dataset.audit); return; }
+  const gv = e.target.closest('[data-go]'); if (gv) { go(gv.dataset.go); return; }
+  const ct = e.target.closest('[data-count]'); if (ct) { UI.countView = ct.dataset.count; render(); window.scrollTo(0, 0); return; }
+  const im = e.target.closest('[data-imp]'); if (im) { openImportDetail(im.dataset.imp); return; }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+/* ---------- Início ---------- */
+function lerCodigoEquipe() {
+  let c = '';
+  try { c = new URLSearchParams(location.search).get('equipe') || ''; } catch (e) {}
+  if (c) {
+    try { localStorage.setItem('estoque_equipe', c); } catch (e) {}
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
+    return c;
+  }
+  try { return localStorage.getItem('estoque_equipe') || ''; } catch (e) { return ''; }
+}
+function semAcesso(msg) {
+  document.getElementById('view').innerHTML = `<div style="max-width:460px;margin:8vh auto 0" class="card stack"><h1>Espelho de Estoque</h1><p>${msg}</p><p class="muted small">Abra o link que a Lari mandou para a equipe. Depois da primeira vez, este navegador lembra o acesso.</p></div>`;
+}
+(async () => {
+  if (SUPA_CFG) {
+    if (!window.supabase || /COLE_/.test(SUPA_CFG.url + SUPA_CFG.key)) { document.getElementById('view').innerHTML = `<div class="notice bad"><div><b>Falta configurar o Supabase.</b> Coloque a URL e a chave anon do projeto no início do arquivo.</div></div>`; return; }
+    SB = window.supabase.createClient(SUPA_CFG.url, SUPA_CFG.key, { auth: { persistSession: false, autoRefreshToken: false } });
+    EQUIPE = lerCodigoEquipe();
+    if (!EQUIPE) return semAcesso('Para entrar, use o <b>link da equipe</b>.');
+  }
+  try { await load(); }
+  catch (e) {
+    if (SUPA_CFG && /inv[aá]lido/i.test(String(e && e.message))) { try { localStorage.removeItem('estoque_equipe'); } catch (x) {} return semAcesso('Esse link da equipe não vale mais. Peça o link atualizado.'); }
+    document.getElementById('view').innerHTML = `<div class="notice bad"><div class="grow"><b>Não consegui abrir os dados do ${BACKEND_NOME}.</b> ${esc(e && e.message || e)}<br>Recarregue a página. Se continuar, me avise.</div></div>`;
+    return;
+  }
+  if (Remote.available && !autor()) await askAuthor();
+  const r = location.hash.slice(1); route = VIEWS[r] ? r : 'painel';
+  render(); getDownloads();
+  window.__estoque = { S, Core: C, Repo };
+})();
+})();
+</script>
+</body></html>
